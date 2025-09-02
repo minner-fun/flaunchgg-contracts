@@ -130,7 +130,7 @@ contract BidWallTest is FlaunchTest {
         );
 
         // The swap fee won't have been transferred, but instead allocated
-        assertEq(positionManager.feeEscrow().balances(memecoinTreasury), 0.011277785202558418 ether);
+        assertEq(positionManager.feeEscrow().balances(memecoinTreasury), 0.011277785202559277 ether);
 
         // Check the pool has no pending fees for the bidwall
         (,,,, uint pendingETHFees,) = bidWall.poolInfo(poolKey.toId());

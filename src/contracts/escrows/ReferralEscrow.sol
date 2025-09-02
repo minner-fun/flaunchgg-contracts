@@ -28,6 +28,7 @@ contract ReferralEscrow is AccessControl, Ownable {
 
     error MismatchedTokensAndLimits();
     error NotPositionManager();
+
     /// Event emitted when tokens are assigned to a user
     event TokensAssigned(PoolId indexed _poolId, address indexed _user, address indexed _token, uint _amount);
 
@@ -59,6 +60,8 @@ contract ReferralEscrow is AccessControl, Ownable {
 
     /**
      * Function to update the PoolSwap contract address (only owner can call this).
+     *
+     * @dev This function is deprecated and will be removed in a future version.
      *
      * @param _poolSwap The new address that will handle pool swaps
      */

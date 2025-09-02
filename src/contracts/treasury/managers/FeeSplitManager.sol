@@ -6,6 +6,7 @@ import {ReentrancyGuard} from '@solady/utils/ReentrancyGuard.sol';
 
 import {TreasuryManager, ITreasuryManager} from '@flaunch/treasury/managers/TreasuryManager.sol';
 import {SupportsCreatorTokens} from '@flaunch/treasury/managers/SupportsCreatorTokens.sol';
+import {SupportsOwnerFees} from '@flaunch/treasury/managers/SupportsOwnerFees.sol';
 
 
 /**
@@ -15,15 +16,17 @@ import {SupportsCreatorTokens} from '@flaunch/treasury/managers/SupportsCreatorT
  * This contract has been built in an approach that should allow other contracts to inherit
  * it and determine how fees are split and spent.
  */
-abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, ReentrancyGuard  {
+abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, SupportsOwnerFees, ReentrancyGuard  {
 
     using EnumerableSet for EnumerableSet.UintSet;
 
     error InvalidRecipient();
     error InvalidRecipientShareTotal(uint _share, uint _validShare);
+    error InvalidShareTotal();
     error UnableToSendRevenue(bytes _reason);
 
     event CreatorUpdated(address indexed _flaunch, uint indexed _tokenId, address _creator);
+    event ETHReceivedFromUnknownSource(address indexed _sender, uint _amount);
 
     /// The valid share that the split must equal
     uint public constant VALID_SHARE_TOTAL = 100_00000;
@@ -40,8 +43,29 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Ree
      *
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      */
-    constructor (address _treasuryManagerFactory) TreasuryManager(_treasuryManagerFactory) SupportsCreatorTokens(_treasuryManagerFactory) {
+    constructor (address _treasuryManagerFactory)
+        TreasuryManager(_treasuryManagerFactory)
+        SupportsCreatorTokens(_treasuryManagerFactory)
+        SupportsOwnerFees(_treasuryManagerFactory) 
+    {
         // ..
+    }
+
+    /**
+     * Sets the creator and owner shares for the manager.
+     *
+     * @param _creatorShare The share that a creator will earn from their token
+     * @param _ownerShare The share that the manager owner will earn from their token
+     */
+    function _setShares(uint _creatorShare, uint _ownerShare) internal {
+        // Set the creator and owner shares
+        _setCreatorShare(_creatorShare);
+        _setOwnerShare(_ownerShare);
+
+        // Validate that the sum of the shares is less than the total share
+        if (_creatorShare + _ownerShare > VALID_SHARE_TOTAL) {
+            revert InvalidShareTotal();
+        }
     }
 
     /**
@@ -52,7 +76,7 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Ree
      * @param _creator The creator of the FlaunchToken
      * @param _data Additional deposit data for the manager
      */
-    function _deposit(FlaunchToken calldata _flaunchToken, address _creator, bytes calldata _data) internal override {
+    function _deposit(FlaunchToken calldata _flaunchToken, address _creator, bytes calldata _data) internal virtual override {
         _setCreatorToken(_flaunchToken, _creator, _data);
     }
 
@@ -132,10 +156,10 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Ree
      */
     function managerFees() public view returns (uint) {
         // Get the pending fees for the manager and add them to the already claimed manager
-        // split fees (`splitFees`). If we have a creator fee, then we reduce our manager fees
-        // by the creator share.
+        // split fees (`splitFees`). If we have a creator or owner fee, then we reduce our manager
+        // fees by the creator and owner shares.
         uint pendingBalance = treasuryManagerFactory.feeEscrow().balances(address(this));
-        return splitFees + pendingBalance - getCreatorFee(pendingBalance);
+        return splitFees + pendingBalance - getCreatorFee(pendingBalance) - getOwnerFee(pendingBalance);
     }
 
     /**
@@ -236,19 +260,32 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Ree
         // from the fee allocations of ERC721 tokens. This means that we allocate a portion of
         // this fee to the creators pool
         if (msg.sender == address(treasuryManagerFactory.feeEscrow())) {
+            // Calculate the creator fee and allocate it
             uint creatorFee = getCreatorFee(msg.value);
-
             if (creatorFee != 0) {
                 _creatorFees += creatorFee;
             }
 
-            splitFees += msg.value - creatorFee;
+            // Calculate the owner fee and allocate it
+            uint ownerFee = getOwnerFee(msg.value);
+            if (ownerFee != 0) {
+                _ownerFees += ownerFee;
+            }
+
+            // Calculate remaining fees that are split
+            splitFees += msg.value - creatorFee - ownerFee;
         }
         // Otherwise, we have received ETH from an unknown source and as such we cannot
         // allocate any portion of this to a creator as our system will not understand which
         // creator should receive a share of it.
         else {
-            splitFees += msg.value;
+            // Calculate the owner fee and allocate it
+            uint ownerFee = getOwnerFee(msg.value);
+            _ownerFees += ownerFee;
+
+            // Calculate remaining fees that are split
+            splitFees += msg.value - ownerFee;
+            emit ETHReceivedFromUnknownSource(msg.sender, msg.value - ownerFee);
         }
     }
 

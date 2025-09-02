@@ -10,11 +10,12 @@ import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
-import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
 import {AnyFlaunch} from '@flaunch/AnyFlaunch.sol';
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
+import {BidWall} from '@flaunch/bidwall/BidWall.sol';
+import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
 
-import {ERC20Mock} from "test/mocks/ERC20Mock.sol";
+import {ERC20Mock} from 'test/tokens/ERC20Mock.sol';
 
 import {FlaunchTest} from './FlaunchTest.sol';
 
@@ -30,7 +31,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         _deployPlatform();
 
         // deploy & mint ERC20Mock for tests
-        memecoin = address(new ERC20Mock('Token Name', 'TOKEN'));
+        memecoin = address(new ERC20Mock(address(this)));
         ERC20Mock(memecoin).mint(address(this), 100_000 ether);
     }
 
@@ -90,7 +91,7 @@ contract AnyPositionManagerTest is FlaunchTest {
 
     function test_CanMassFlaunch(uint8 flaunchCount, bool _flipped) public flipTokens(_flipped) {
         for (uint i; i < flaunchCount; ++i) {
-            memecoin = address(new ERC20Mock('Token Name', 'TOKEN'));
+            memecoin = address(new ERC20Mock(address(this)));
             _approveCreator(address(this));
 
             anyPositionManager.flaunch(
@@ -511,6 +512,79 @@ contract AnyPositionManagerTest is FlaunchTest {
                 sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             })
         );
+
+        // Now make a swap that will hit the BidWall liquidity
+        poolSwap.swap(
+            poolKey,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: -1 ether,
+                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+            })
+        );
+    }
+
+    function test_CanCloseBidWall() public {
+        _flaunch();
+
+        PoolKey memory poolKey = anyPositionManager.poolKey(memecoin);
+
+        anyBidWall.setDisabledState(poolKey, true);
+        (bool disabled, , , , , ) = anyBidWall.poolInfo(poolKey.toId());
+        assertEq(disabled, true);
+    }
+
+    /**
+     * The BidWall is repositioned in one of two cases:
+     *
+     * 1. If the BidWall becomes stale through `checkStalePosition`
+     * 2. If `deposit` is called on the BidWall and the amount of pending fees is greater than
+     *    the threshold.
+     *
+     * For the purposes of this test, it is easier to trigger this through `checkStalePosition`.
+     */
+    function test_CanRepositionBidWall() public {
+        _flaunch();
+
+        // Ensure we have enough tokens for liquidity and approve them for our {PoolManager}
+        deal(address(anyPositionManager.nativeToken()), address(this), 10e27);
+        IERC20(anyPositionManager.nativeToken()).approve(address(poolModifyPosition), type(uint).max);
+        IERC20(memecoin).approve(address(poolModifyPosition), type(uint).max);
+
+        PoolKey memory poolKey = anyPositionManager.poolKey(memecoin);
+
+        // Modify our position with additional ETH and tokens
+        poolModifyPosition.modifyLiquidity(
+            poolKey,
+            IPoolManager.ModifyLiquidityParams({
+                tickLower: TickMath.minUsableTick(poolKey.tickSpacing),
+                tickUpper: TickMath.maxUsableTick(poolKey.tickSpacing),
+                liquidityDelta: 10 ether,
+                salt: ''
+            }),
+            ''
+        );
+
+        IERC20(anyPositionManager.nativeToken()).approve(address(poolSwap), type(uint).max);
+        IERC20(memecoin).approve(address(poolSwap), type(uint).max);
+
+        // Make a swap big enough to trigger the BidWall
+        poolSwap.swap(
+            poolKey,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: -1000 ether,
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            })
+        );
+
+        // Move past our timeout
+        vm.warp(block.timestamp + bidWall.staleTimeWindow());
+
+        // We can expect the emit of the `BidWallRepositioned` event to confirm that it has
+        // been hit correctly.
+        vm.expectEmit();
+        emit BidWall.BidWallRepositioned(poolKey.toId(), 4122467602127208476, -44160, -44100);
 
         // Now make a swap that will hit the BidWall liquidity
         poolSwap.swap(

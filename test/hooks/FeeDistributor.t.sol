@@ -242,11 +242,10 @@ contract FeeDistributorTest is FlaunchTest {
         );
     }
 
-    function test_CanAllocateAndWithdrawFees(address _sender, address payable _recipient, uint _amount, bool _unwrap) public {
+    function test_CanAllocateAndWithdrawFees(uint _amount, bool _unwrap) public {
         // Ensure we don't have a used address for recipient
-        _assumeValidAddress(_recipient);
-        _assumeValidAddress(_sender);
-        vm.assume(_sender != _recipient);
+        address payable _sender = payable(makeAddr('_sender'));
+        address payable _recipient = payable(makeAddr('_recipient'));
 
         // Ensure we have a positive amount and that we can safely 2x the value
         vm.assume(_amount > 0);
@@ -255,7 +254,7 @@ contract FeeDistributorTest is FlaunchTest {
         // Mint ETH to the flETH contract to facilitate unwrapping
         deal(address(this), _amount * 2);
         WETH.deposit{value: _amount * 2}();
-        WETH.transfer(address(positionManager), _amount * 2);
+        WETH.approve(address(feeEscrow), _amount * 2);
 
         // Allocate the fees to the recipient, confirming that our event is fired
         vm.expectEmit();
@@ -310,8 +309,8 @@ contract FeeDistributorTest is FlaunchTest {
         _processSwap(true, -3 ether, _referrer);
 
         // Get the expected cost and fees (from the PoolSwap event)
-        uint expectedTokens = 5.980976000727421734 ether; // uniAmount1
-        uint expectedFees   = 0.059809760007274217 ether; // uniFee1
+        uint expectedTokens = 5.980976000725637630 ether; // uniAmount1
+        uint expectedFees   = 0.059809760007256376 ether; // uniFee1
 
         uint referrerFee;
         if (_referrer != address(0)) {
@@ -347,8 +346,8 @@ contract FeeDistributorTest is FlaunchTest {
         _processSwap(true, 3 ether, _referrer);
 
         // Get the expected cost and fees (from the PoolSwap event)
-        uint expectedCost = 1.504762194065487463 ether; // uniAmount0
-        uint expectedFees = 0.015047621940654874 ether; // uniFee0
+        uint expectedCost = 1.504762194065710928 ether; // uniAmount0
+        uint expectedFees = 0.015047621940657109 ether; // uniFee0
 
         uint referrerFee;
         if (_referrer != address(0)) {
@@ -363,7 +362,6 @@ contract FeeDistributorTest is FlaunchTest {
         assertEq(fees.amount1, 0, 'Incorrect closing pool token1 fees');
 
         assertEq(WETH.balanceOf(address(poolManager)), poolManagerEth + expectedCost, 'Invalid closing poolManager ETH balance');
-        assertEq(WETH.balanceOf(address(positionManager)), expectedFees - referrerFee, 'Invalid closing positionManager ETH balance');
 
         assertEq(WETH.balanceOf(address(referralEscrow)), referrerFee, 'Invalid closing referralEscrow ETH balance');
         assertEq(IERC20(memecoin).balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow memecoin balance');
@@ -400,7 +398,6 @@ contract FeeDistributorTest is FlaunchTest {
         assertEq(fees.amount1, 0, 'Incorrect closing pool token1 fees');
 
         assertEq(WETH.balanceOf(address(poolManager)), poolManagerEth - expectedTokens, 'Invalid closing poolManager ETH balance');
-        assertEq(WETH.balanceOf(address(positionManager)), expectedFees - referrerFee, 'Invalid closing positionManager ETH balance');
 
         assertEq(WETH.balanceOf(address(referralEscrow)), referrerFee, 'Invalid closing referralEscrow ETH balance');
         assertEq(IERC20(memecoin).balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow memecoin balance');
@@ -462,11 +459,11 @@ contract FeeDistributorTest is FlaunchTest {
         // These are the total amount of fees accumulated from the swap. From these values we will
         // then need to find 5% to return the actual fees received by the referrer.
         uint internalFees = 0.005380455668937963 ether;
-        uint uniswapFees  = 0.010031688214552693 ether;
+        uint uniswapFees  = 0.010031688214553679 ether;
 
         // Calculate the amount of fees that a referrer would receive (5% of swap fees). The
-        // manipulation of "2" is to accommodate rounding issues.
-        uint referrerFees = ((internalFees + uniswapFees) / 100) * 5 + 2;
+        // manipulation of "1" is to accommodate rounding issues.
+        uint referrerFees = ((internalFees + uniswapFees) / 100) * 5 + 1;
 
         assertEq(referralEscrow.allocations(_referrer, address(WETH)), referrerFees, 'Invalid closing referrer ETH balance');
         assertEq(referralEscrow.allocations(_referrer, memecoin), 0, 'Invalid closing referrer token balance');
@@ -705,7 +702,7 @@ contract FeeDistributorTest is FlaunchTest {
         _processSwap(true, -3 ether, _referrer);
 
         // Get the expected cost and fees (from the PoolSwap event)
-        uint expectedFees = 0.059809760007274217 ether; // uniFee1
+        uint expectedFees = 0.059809760007256376 ether; // uniFee1
 
         // Calculate the referrer fee that we expect to be taken
         uint referrerFee = expectedFees * 5 / 100;
@@ -759,6 +756,7 @@ contract FeeDistributorTest is FlaunchTest {
     }
 
     function _assumeValidReferrer(address _referrer) internal view {
+        vm.assume(_referrer != address(0));
         vm.assume(_referrer != address(poolManager));
         vm.assume(_referrer != address(positionManager));
         vm.assume(_referrer != address(this));

@@ -435,6 +435,30 @@ abstract contract FeeDistributor is Ownable {
     }
 
     /**
+     * Initializes both the Fair Launch and Standard {IFeeCalculator} flaunching parameters for a pool.
+     *
+     * @param _poolId The PoolId being updated
+     * @param _feeCalculatorParams The parameters to pass to the fee calculators
+     */
+    function _initializeFeeCalculators(PoolId _poolId, bytes calldata _feeCalculatorParams) internal {
+        // Check if we have a fair launch calculator assigned. If we do, then we want to register
+        // any custom parameters that have been passed.
+        IFeeCalculator fairLaunchCalculator = getFeeCalculator(true);
+        if (address(fairLaunchCalculator) != address(0)) {
+            fairLaunchCalculator.setFlaunchParams(_poolId, _feeCalculatorParams);
+        }
+
+        // Check if we have a standard calculator assigned that is different to the fair launch
+        // calculator. If we do, then we want to register any custom parameters that have been
+        // passed.
+        IFeeCalculator standardCalculator = getFeeCalculator(false);
+        if (address(standardCalculator) != address(fairLaunchCalculator)) {
+            standardCalculator.setFlaunchParams(_poolId, _feeCalculatorParams);
+        }
+    }
+
+
+    /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
      */
     receive () external payable {}

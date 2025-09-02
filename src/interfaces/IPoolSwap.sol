@@ -11,5 +11,6 @@ interface IPoolSwap {
     function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params) external payable returns (BalanceDelta);
 
     function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, address _referrer) external payable returns (BalanceDelta delta_);
-
+    
+    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, bytes memory _hookData) external payable returns (BalanceDelta delta_);
 }

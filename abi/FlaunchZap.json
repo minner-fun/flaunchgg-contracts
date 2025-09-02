@@ -76,6 +76,40 @@
     },
     {
       "type": "function",
+      "name": "deployAndInitializeManager",
+      "inputs": [
+        {
+          "name": "_managerImplementation",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "_permissions",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "manager_",
+          "type": "address",
+          "internalType": "address payable"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "flETH",
       "inputs": [],
       "outputs": [
@@ -152,6 +186,92 @@
               "internalType": "bytes"
             }
           ]
+        },
+        {
+          "name": "_premineSwapHookData",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "_whitelistParams",
+          "type": "tuple",
+          "internalType": "struct FlaunchZap.WhitelistParams",
+          "components": [
+            {
+              "name": "merkleRoot",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "merkleIPFSHash",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "maxTokens",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        },
+        {
+          "name": "_airdropParams",
+          "type": "tuple",
+          "internalType": "struct FlaunchZap.AirdropParams",
+          "components": [
+            {
+              "name": "airdropIndex",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "airdropAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "airdropEndTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "merkleRoot",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "merkleIPFSHash",
+              "type": "string",
+              "internalType": "string"
+            }
+          ]
+        },
+        {
+          "name": "_treasuryManagerParams",
+          "type": "tuple",
+          "internalType": "struct FlaunchZap.TreasuryManagerParams",
+          "components": [
+            {
+              "name": "manager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "permissions",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "initializeData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "depositData",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
         }
       ],
       "outputs": [
@@ -166,7 +286,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "",
+          "name": "deployedManager_",
           "type": "address",
           "internalType": "address"
         }
@@ -240,80 +360,9 @@
           ]
         },
         {
-          "name": "_whitelistParams",
-          "type": "tuple",
-          "internalType": "struct FlaunchZap.WhitelistParams",
-          "components": [
-            {
-              "name": "merkleRoot",
-              "type": "bytes32",
-              "internalType": "bytes32"
-            },
-            {
-              "name": "merkleIPFSHash",
-              "type": "string",
-              "internalType": "string"
-            },
-            {
-              "name": "maxTokens",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ]
-        },
-        {
-          "name": "_airdropParams",
-          "type": "tuple",
-          "internalType": "struct FlaunchZap.AirdropParams",
-          "components": [
-            {
-              "name": "airdropIndex",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "airdropAmount",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "airdropEndTime",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "merkleRoot",
-              "type": "bytes32",
-              "internalType": "bytes32"
-            },
-            {
-              "name": "merkleIPFSHash",
-              "type": "string",
-              "internalType": "string"
-            }
-          ]
-        },
-        {
-          "name": "_treasuryManagerParams",
-          "type": "tuple",
-          "internalType": "struct FlaunchZap.TreasuryManagerParams",
-          "components": [
-            {
-              "name": "manager",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "initializeData",
-              "type": "bytes",
-              "internalType": "bytes"
-            },
-            {
-              "name": "depositData",
-              "type": "bytes",
-              "internalType": "bytes"
-            }
-          ]
+          "name": "_premineSwapHookData",
+          "type": "bytes",
+          "internalType": "bytes"
         }
       ],
       "outputs": [
@@ -328,7 +377,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "deployedManager_",
+          "name": "",
           "type": "address",
           "internalType": "address"
         }

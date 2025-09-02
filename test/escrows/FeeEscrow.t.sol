@@ -93,11 +93,10 @@ contract FeeEscrowTest is FlaunchTest {
         _feeEscrow.allocateFees(_poolId, address(0), 1);
     }
     
-    function test_WithdrawFees(address _sender, address payable _recipient, uint256 _amount, bool _unwrap) public {
-        // Validate addresses
-        vm.assume(_sender != address(0));
-        vm.assume(_recipient != address(0));
-        vm.assume(_sender != _recipient);
+    function test_WithdrawFees(uint _amount, bool _unwrap) public {
+        // Create valid addresses for testing
+        address payable _sender = payable(makeAddr('_sender'));
+        address payable _recipient = payable(makeAddr('_recipient'));
         
         // Limit amount to a reasonable value
         vm.assume(_amount > 0 && _amount < 1000 ether);
@@ -136,10 +135,10 @@ contract FeeEscrowTest is FlaunchTest {
         }
     }
     
-    function test_WithdrawFeesWithZeroBalance(address _sender, address _recipient, bool _unwrap) public {
-        // Validate addresses
-        vm.assume(_sender != address(0));
-        vm.assume(_recipient != address(0));
+    function test_WithdrawFeesWithZeroBalance(bool _unwrap) public {
+        // Create valid addresses for testing
+        address payable _sender = payable(makeAddr('_sender'));
+        address payable _recipient = payable(makeAddr('_recipient'));
         
         // Verify initial balance is zero
         assertEq(_feeEscrow.balances(_sender), 0, "Initial balance should be zero");
@@ -152,11 +151,10 @@ contract FeeEscrowTest is FlaunchTest {
         assertEq(_feeEscrow.balances(_sender), 0, "Balance should still be zero after withdrawal");
     }
     
-    function test_WithdrawFeesMultipleTimes(address _sender, address payable _recipient, uint256 _amount) public {
-        // Validate addresses
-        vm.assume(_sender != address(0));
-        vm.assume(_recipient != address(0));
-        vm.assume(_sender != _recipient);
+    function test_WithdrawFeesMultipleTimes(uint _amount) public {
+        // Create valid addresses for testing
+        address payable _sender = payable(makeAddr('_sender'));
+        address payable _recipient = payable(makeAddr('_recipient'));
         
         // Limit amount to a reasonable value
         vm.assume(_amount > 0 && _amount < 1000 ether);
@@ -202,7 +200,6 @@ contract FeeEscrowTest is FlaunchTest {
 
     function test_AllocationFeeDeposit_Integration() public {
         // Create test addresses
-        address sender = makeAddr("sender");
         address recipient = makeAddr("recipient");
         uint256 amount = 1 ether;
         

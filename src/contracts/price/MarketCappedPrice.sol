@@ -127,7 +127,7 @@ contract MarketCappedPrice is IInitialPrice, Ownable {
      *
      * @return sqrtPriceX96_ The `sqrtPriceX96` value
      */
-    function getSqrtPriceX96(address /* _sender */, bool _flipped, bytes calldata _initialPriceParams) public view returns (uint160 sqrtPriceX96_) {
+    function getSqrtPriceX96(address /* _sender */, bool _flipped, bytes calldata _initialPriceParams) public view virtual returns (uint160 sqrtPriceX96_) {
         return _calculateSqrtPriceX96(getMarketCap(_initialPriceParams), TokenSupply.INITIAL_SUPPLY, !_flipped);
     }
 

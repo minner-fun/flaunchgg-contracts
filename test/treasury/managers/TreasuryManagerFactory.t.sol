@@ -76,7 +76,7 @@ contract TreasuryManagerFactoryTest is FlaunchTest {
 
         // We know the address in advance for this test, so we can assert the expected value
         vm.expectEmit();
-        emit TreasuryManagerFactory.ManagerDeployed(0xA02A0858A7B38B1f7F3230FAD136BD895C412CE5, managerImplementation);
+        emit TreasuryManagerFactory.ManagerDeployed(0x269C4753e15E47d7CaD8B230ed19cFff21f29D51, managerImplementation);
 
         // Deploy our new manager
         address payable _manager = treasuryManagerFactory.deployManager(managerImplementation);
@@ -103,5 +103,4 @@ contract TreasuryManagerFactoryTest is FlaunchTest {
         vm.expectRevert();
         TreasuryManagerMock(_manager).initialize(address(this), data);
     }
-
 }

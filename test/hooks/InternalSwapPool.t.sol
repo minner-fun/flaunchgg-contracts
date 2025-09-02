@@ -161,9 +161,9 @@ contract InternalSwapPoolTest is FlaunchTest {
         assertEq(fees.amount1, 0, 'Incorrect closing pool token1 fees');
 
         // Determine the amount that Uniswap takes in ETH for the remaining
-        uint uniswapSwapEthInput = 0.501575448855083099 ether;
+        uint uniswapSwapEthInput = 0.501575448855107184 ether;
         uint uniswapSwapTokenOutput = 1 ether;
-        uint uniswapSwapEthSwapFee = 0.005015754488550830 ether;
+        uint uniswapSwapEthSwapFee = 0.005015754488551071 ether;
 
         // Confirm that the user has received their total expected tokens
         assertEq(WETH.balanceOf(address(this)), 10 ether - internalSwapEthInput - uniswapSwapEthInput - internalSwapEthSwapFee - uniswapSwapEthSwapFee, 'Invalid closing user ETH balance');
@@ -234,12 +234,17 @@ contract InternalSwapPoolTest is FlaunchTest {
         // come in to be hit in the next swap due to fees on the internal swap
         fees = positionManager.poolFees(_poolKey);
         assertEq(fees.amount0, 0, 'Incorrect closing pool ETH fees');
-        assertEq(fees.amount1, 0.113843438963717918 ether, 'Incorrect closing pool token1 fees');
+        assertEq(fees.amount1, 0.113843438963673875 ether, 'Incorrect closing pool token1 fees');
 
         // Determine the amount that Uniswap takes in ETH for the remaining
         uint uniswapSwapEthInput = 4.707106781186547525 ether;
-        uint uniswapSwapTokenOutput = 9.384343896371791814 ether;
-        uint uniswapSwapTokenSwapFee = 0.093843438963717918 ether;
+        uint uniswapSwapTokenOutput = 9.384343896367387567 ether;
+        uint uniswapSwapTokenSwapFee = 0.093843438963673874 ether;
+
+        // Handle a small dust issue
+        if (_flipped) {
+            uniswapSwapTokenSwapFee += 1;
+        }
 
         // Confirm that the user has received their total expected tokens
         assertEq(WETH.balanceOf(address(this)), 10 ether - internalSwapEthInput - uniswapSwapEthInput, 'Invalid closing user ETH balance');

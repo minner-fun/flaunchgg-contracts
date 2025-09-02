@@ -16,12 +16,15 @@ import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
 import {ERC20Mock} from './tokens/ERC20Mock.sol';
 import {FlaunchTest} from './FlaunchTest.sol';
+import {HookMiner} from './utils/HookMiner.sol';
 
 
 contract FlayHooksTest is FlaunchTest {
 
-    /// A hook address that matches the valid hook bytes
-    address public constant VALID_FLAY_HOOKS_ADDRESS = 0x212224D2F2D262Cd093ee13240ca4873fccB20CC;
+    /// Set contract addresses hardcoded on the FlayHooks contract
+    address public constant TOKEN_0 = 0x000000000D564D5be76f7f0d28fE52605afC7Cf8;
+    address public constant TOKEN_1 = 0xF1A7000000950C7ad8Aff13118Bb7aB561A448ee;
+    address public constant POOL_MANAGER = 0x498581fF718922c3f8e6A244956aF099B2652b2b;
 
     /// Our {FlayHooks} contract we are testing
     FlayHooks internal flayHooks;
@@ -31,32 +34,32 @@ contract FlayHooksTest is FlaunchTest {
     ERC20Mock internal token1;
 
     function setUp() public {
-        // Deploy our platform
-        _deployPlatform();
-
         // Deploy our PoolManager to the expected address and update our test contracts
-        deployCodeTo('PoolManager.sol', abi.encode(address(this)), 0x498581fF718922c3f8e6A244956aF099B2652b2b);
-        poolManager = PoolManager(0x498581fF718922c3f8e6A244956aF099B2652b2b);
+        deployCodeTo('PoolManager.sol', abi.encode(address(this)), POOL_MANAGER);
+        poolManager = PoolManager(POOL_MANAGER);
         poolModifyPosition = new PoolModifyLiquidityTest(poolManager);
         poolSwap = new PoolSwap(poolManager);
 
         // Deploy our ERC20Mock tokens to specific addresses that will be supported on Base
-        deployCodeTo('ERC20Mock.sol', abi.encode(address(this)), 0x000000000D564D5be76f7f0d28fE52605afC7Cf8);
-        deployCodeTo('ERC20Mock.sol', abi.encode(address(this)), 0xF1A7000000950C7ad8Aff13118Bb7aB561A448ee);
+        deployCodeTo('tokens/ERC20Mock.sol:ERC20Mock', abi.encode(address(this)), TOKEN_0);
+        deployCodeTo('tokens/ERC20Mock.sol:ERC20Mock', abi.encode(address(this)), TOKEN_1);
 
-        // Create 2 tokens for the tests
-        token0 = ERC20Mock(0x000000000D564D5be76f7f0d28fE52605afC7Cf8);
-        token1 = ERC20Mock(0xF1A7000000950C7ad8Aff13118Bb7aB561A448ee);
+        token0 = ERC20Mock(TOKEN_0);
+        token1 = ERC20Mock(TOKEN_1);
 
         // Deploy our FlayHooks contract to a valid address
-        deployCodeTo(
-            'FlayHooks.sol',
-            abi.encode(SQRT_PRICE_1_1, address(this)),
-            VALID_FLAY_HOOKS_ADDRESS
+        (, bytes32 salt) = HookMiner.find(
+            // @dev The address that will deploy the hook. In `forge test`, this will be the test contract `address(this)`
+            // or the pranking address. In `forge script`, this should be `0x4e59b44847b379578588920cA78FbF26c0B4956C`
+            // (CREATE2 Deployer Proxy).
+            address(this),
+            uint160(Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG),
+            type(FlayHooks).creationCode,
+            abi.encode(SQRT_PRICE_1_1, address(this))
         );
 
-        flayHooks = FlayHooks(VALID_FLAY_HOOKS_ADDRESS);
-        flayHooks.bidWall().grantRole(ProtocolRoles.POSITION_MANAGER, VALID_FLAY_HOOKS_ADDRESS);
+        flayHooks = new FlayHooks{salt: salt}(SQRT_PRICE_1_1, address(this));
+        flayHooks.bidWall().grantRole(ProtocolRoles.POSITION_MANAGER, address(flayHooks));
     }
 
     function test_CanGetPublicVariables() public view {

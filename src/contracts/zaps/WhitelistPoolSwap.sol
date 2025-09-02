@@ -51,7 +51,7 @@ contract WhitelistPoolSwap is PoolSwap {
         IPoolManager.SwapParams memory _params,
         bytes32[] memory _merkleProof
     ) public payable virtual returns (BalanceDelta) {
-        return swap(_key, _params, _merkleProof, address(0));
+        return swap(_key, _params, _merkleProof, bytes(''));
     }
 
     /**
@@ -60,7 +60,7 @@ contract WhitelistPoolSwap is PoolSwap {
      * @param _key The PoolKey to swap against
      * @param _params The parameters for the swap
      * @param _merkleProof The merkle proof for the whitelist spot
-     * @param _referrer The referrer of the swap
+     * @param _hookData Arbitrary data passed to the pool's hook, containing referrer & SignedMessage for trusted signer
      *
      * @return delta_ The BalanceDelta of the swap
      */
@@ -68,7 +68,7 @@ contract WhitelistPoolSwap is PoolSwap {
         PoolKey memory _key,
         IPoolManager.SwapParams memory _params,
         bytes32[] memory _merkleProof,
-        address _referrer
+        bytes memory _hookData
     ) public payable virtual returns (BalanceDelta delta_) {
         PoolId poolId = _key.toId();
         (bytes32 root,, uint maxTokens, bool active,) = whitelistFairLaunch.whitelistMerkles(poolId);
@@ -81,16 +81,16 @@ contract WhitelistPoolSwap is PoolSwap {
 
         // Action the swap which should now be whitelisted
         delta_ = abi.decode(
-            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _referrer))),
+            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _hookData))),
             (BalanceDelta)
         );
 
         // Increase the amount of tokens that the user has claimed
-        tokensClaimed[_key.toId()][msg.sender] += uint(-int(delta_.amount0() < 0 ? delta_.amount0() : delta_.amount1()));
+        tokensClaimed[poolId][msg.sender] += uint(-int(delta_.amount0() < 0 ? delta_.amount0() : delta_.amount1()));
 
         // Confirm the amount that the user has claimed in this whitelist does not surpass the
         // maximum. If there is no maxTokens value set, then we don't need to make this check.
-        if (maxTokens != 0 && tokensClaimed[_key.toId()][msg.sender] > maxTokens) {
+        if (maxTokens != 0 && tokensClaimed[poolId][msg.sender] > maxTokens) {
             // If the user has already claimed their allocation, then we need to prevent the swap
             revert TooManyTokensClaimed();
         }
@@ -100,11 +100,15 @@ contract WhitelistPoolSwap is PoolSwap {
      * Routes the existing swap logic that is inherited through the merkle approach.
      */
     function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params) public payable override returns (BalanceDelta) {
-        return swap(_key, _params, new bytes32[](0), address(0));
+        return swap(_key, _params, new bytes32[](0), bytes(''));
     }
 
     function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, address _referrer) public payable override returns (BalanceDelta) {
-        return swap(_key, _params, new bytes32[](0), _referrer);
+        return swap(_key, _params, new bytes32[](0), _referrer == address(0) ? bytes('') : abi.encode(_referrer));
+    }
+
+    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, bytes memory _hookData) public payable override returns (BalanceDelta delta_) {
+        return swap(_key, _params, new bytes32[](0), _hookData);
     }
 
 }

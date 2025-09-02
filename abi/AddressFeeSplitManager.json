@@ -30,6 +30,19 @@
     },
     {
       "type": "function",
+      "name": "MAX_OWNER_SHARE",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "VALID_SHARE_TOTAL",
       "inputs": [],
       "outputs": [
@@ -91,6 +104,19 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "claimableOwnerFees",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -241,6 +267,25 @@
     },
     {
       "type": "function",
+      "name": "getOwnerFee",
+      "inputs": [
+        {
+          "name": "_amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ownerFee_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getPoolId",
       "inputs": [
         {
@@ -327,6 +372,30 @@
     },
     {
       "type": "function",
+      "name": "isValidCreator",
+      "inputs": [
+        {
+          "name": "_creator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "isValidRecipient",
       "inputs": [
         {
@@ -390,6 +459,32 @@
     },
     {
       "type": "function",
+      "name": "ownerFees",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "ownerShare",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "pendingCreatorFees",
       "inputs": [
         {
@@ -403,6 +498,32 @@
           "name": "balance_",
           "type": "uint256",
           "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingOwnerFees",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "permissions",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IManagerPermissions"
         }
       ],
       "stateMutability": "view"
@@ -486,6 +607,19 @@
           "name": "_creator",
           "type": "address",
           "internalType": "address payable"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setPermissions",
+      "inputs": [
+        {
+          "name": "_permissions",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "outputs": [],
@@ -681,6 +815,25 @@
     },
     {
       "type": "event",
+      "name": "ETHReceivedFromUnknownSource",
+      "inputs": [
+        {
+          "name": "_sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "ManagerInitialized",
       "inputs": [
         {
@@ -697,6 +850,11 @@
           "components": [
             {
               "name": "creatorShare",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "ownerShare",
               "type": "uint256",
               "internalType": "uint256"
             },
@@ -736,6 +894,32 @@
           "name": "_newOwner",
           "type": "address",
           "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnerShareInitialized",
+      "inputs": [
+        {
+          "name": "_ownerShare",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PermissionsUpdated",
+      "inputs": [
+        {
+          "name": "_permissions",
+          "type": "address",
+          "indexed": false,
           "internalType": "address"
         }
       ],
@@ -918,12 +1102,22 @@
     },
     {
       "type": "error",
+      "name": "InvalidCreator",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidCreatorAddress",
       "inputs": []
     },
     {
       "type": "error",
       "name": "InvalidCreatorShare",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidOwnerShare",
       "inputs": []
     },
     {
@@ -949,6 +1143,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidShareTotal",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidShareTransferRecipient",
       "inputs": []
     },
@@ -960,6 +1159,11 @@
     {
       "type": "error",
       "name": "NotManagerOwner",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OwnerShareAlreadyInitialized",
       "inputs": []
     },
     {

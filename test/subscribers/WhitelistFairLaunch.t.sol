@@ -635,6 +635,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
                 initialPriceParams: abi.encode(5000e6),
                 feeCalculatorParams: abi.encode(1000)
             }),
+            _premineSwapHookData: bytes(''),
             _whitelistParams: FlaunchZap.WhitelistParams({
                 merkleRoot: _root,
                 merkleIPFSHash: _ipfs,
@@ -649,6 +650,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
             }),
             _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
                 manager: address(0),
+                permissions: address(0),
                 initializeData: abi.encode(''),
                 depositData: abi.encode('')
             })

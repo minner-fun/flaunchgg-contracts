@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
+import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
 
 
 /**
@@ -44,5 +45,64 @@ interface ITreasuryManager {
      * @dev This is designed as a last-resort call, rather than an expected flow.
      */
     function rescue(FlaunchToken calldata _flaunchToken, address _recipient) external;
+
+    /**
+     * Returns the manager owner of the group.
+     *
+     * @return The manager owner of the group
+     */
+    function managerOwner() external view returns (address);
+
+    /**
+     * Checks if the specified address is a valid creator and can deposit tokens into the
+     * treasury manager.
+     *
+     * @param _creator The address to check
+     * @param _data Additional data to pass to the implementation
+     *
+     * @return `true` if the address is a valid creator, `false` otherwise
+     */
+    function isValidCreator(address _creator, bytes calldata _data) external view returns (bool);
+
+    /**
+     * Returns the balance of the specified recipient.
+     *
+     * @param _recipient The recipient to check the balance of
+     *
+     * @return amount_ The balance of the specified recipient
+     */
+    function balances(address _recipient) external view returns (uint amount_);
+
+    /**
+     * Claims the fees for the specified recipient.
+     *
+     * @return amount_ The amount of fees claimed
+     */
+    function claim() external returns (uint amount_);
+
+    /*
+     * Returns the permissions contract for the treasury manager.
+     *
+     * @return The permissions contract for the treasury manager
+     */
+    function permissions() external view returns (IManagerPermissions);
+
+    /**
+     * Sets the deposit permissions contract for the treasury manager.
+     *
+     * @dev Only the manager owner can call this function.
+     *
+     * @param _permissions The new deposit permissions contract
+     */
+    function setPermissions(address _permissions) external;
+
+    /**
+     * Transfers ownership of the contract to a new account (`newOwner`).
+     *
+     * @dev Can only be called by the current owner.
+     *
+     * @param _newManagerOwner The new address that will become the owner
+     */
+    function transferManagerOwnership(address _newManagerOwner) external;
 
 }

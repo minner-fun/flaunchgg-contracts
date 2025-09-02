@@ -52,7 +52,9 @@ contract RevenueManagerTest is FlaunchTest {
         revenueManager = RevenueManager(implementation);
 
         // Create a token and deposit it into our manager
-        tokenId = _createERC721(address(this));
+        tokenId = _createERC721(creator);
+
+        vm.prank(creator);
         flaunch.approve(address(revenueManager), tokenId);
 
         revenueManager.deposit({

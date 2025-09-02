@@ -30,13 +30,13 @@ contract PoolSwap is IUnlockCallback {
      * @member sender The sender of the swap
      * @member key The poolKey being swapped against
      * @member params Swap parameters
-     * @member referrer An optional referrer
+     * @member hookData Arbitrary data passed to the pool's hook
      */
     struct CallbackData {
         address sender;
         PoolKey key;
         IPoolManager.SwapParams params;
-        address referrer;
+        bytes hookData;
     }
 
     /// The Uniswap V4 {PoolManager} contract
@@ -74,7 +74,23 @@ contract PoolSwap is IUnlockCallback {
      */
     function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, address _referrer) public payable virtual returns (BalanceDelta delta_) {
         delta_ = abi.decode(
-            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _referrer))),
+            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _referrer == address(0) ? bytes('') : abi.encode(_referrer)))),
+            (BalanceDelta)
+        );
+    }
+
+    /**
+     * Actions a swap using the SwapParams provided against the PoolKey with hook data.
+     *
+     * @param _key The PoolKey to swap against
+     * @param _params The parameters for the swap
+     * @param _hookData Arbitrary data passed to the pool's hook
+     *
+     * @return delta_ The BalanceDelta of the swap
+     */
+    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, bytes memory _hookData) public payable virtual returns (BalanceDelta delta_) {
+        delta_ = abi.decode(
+            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _hookData))),
             (BalanceDelta)
         );
     }
@@ -95,12 +111,11 @@ contract PoolSwap is IUnlockCallback {
         require(deltaBefore0 == 0, 'deltaBefore0 is not equal to 0');
         require(deltaBefore1 == 0, 'deltaBefore1 is not equal to 0');
 
-        // Action the swap, converting the referrer to bytes so that we exit earlier in our
-        // subsequent hook calls.
+        // Action the swap
         BalanceDelta delta = manager.swap({
             key: data.key,
             params: data.params,
-            hookData: data.referrer == address(0) ? bytes('') : abi.encode(data.referrer)
+            hookData: data.hookData
         });
 
         int deltaAfter0 = manager.currencyDelta(address(this), data.key.currency0);

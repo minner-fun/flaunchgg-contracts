@@ -701,7 +701,7 @@ contract SnapshotAirdropTest is FlaunchTest {
             flaunchAt: 0,
             initialPriceParams: abi.encode(''),
             feeCalculatorParams: abi.encode(1_000)
-        }));
+        }), bytes(''));
 
         IERC20(_memecoin).approve(address(snapshotAirdrop), airdropAmount);
     }

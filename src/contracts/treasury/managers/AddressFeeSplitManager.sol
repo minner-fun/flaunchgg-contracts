@@ -25,6 +25,19 @@ contract AddressFeeSplitManager is FeeSplitManager {
     event RevenueClaimed(address indexed _recipient, uint _amountClaimed);
 
     /**
+     * Parameters passed during manager initialization.
+     *
+     * @member creatorShare The share that a creator will earn from their token
+     * @member ownerShare The share that the manager owner will earn from their token
+     * @member recipientShares Revenue recipients and their share
+     */
+    struct InitializeParams {
+        uint creatorShare;
+        uint ownerShare;
+        RecipientShare[] recipientShares;
+    }
+
+    /**
      * Defines a revenue recipient and the share that they will receive.
      *
      * @member recipient The share recipient of revenue
@@ -33,17 +46,6 @@ contract AddressFeeSplitManager is FeeSplitManager {
     struct RecipientShare {
         address recipient;
         uint share;
-    }
-
-    /**
-     * Parameters passed during manager initialization.
-     *
-     * @member creatorShare The share that a creator will earn from their token
-     * @member recipientShares Revenue recipients and their share
-     */
-    struct InitializeParams {
-        uint creatorShare;
-        RecipientShare[] recipientShares;
     }
 
     /// Track the amount claimed for each recipient
@@ -79,8 +81,8 @@ contract AddressFeeSplitManager is FeeSplitManager {
             revert InvalidRecipient();
         }
 
-        // Validate and set our creator share
-        _setCreatorShare(params.creatorShare);
+        // Validate and set our creator and owner shares
+        _setShares(params.creatorShare, params.ownerShare);
 
         // We emit our initialization event first, as the subgraph may need this information
         // indexed before we emit recipient share events.
@@ -128,8 +130,8 @@ contract AddressFeeSplitManager is FeeSplitManager {
      * @return balance_ The amount of ETH available to claim by the `_recipient`
      */
     function balances(address _recipient) public view override returns (uint balance_) {
-        (uint shareBalance, uint creatorBalance) = _balances(_recipient);
-        balance_ = shareBalance + creatorBalance;
+        (uint shareBalance, uint creatorBalance, uint ownerBalance) = _balances(_recipient);
+        balance_ = shareBalance + creatorBalance + ownerBalance;
     }
 
     /**
@@ -140,8 +142,9 @@ contract AddressFeeSplitManager is FeeSplitManager {
      *
      * @return shareBalance_ The balance available from the `recipientShare`
      * @return creatorBalance_ The balance available from creator fees
+     * @return ownerBalance_ The balance available from owner fees
      */
-    function _balances(address _recipient) internal view returns (uint shareBalance_, uint creatorBalance_) {
+    function _balances(address _recipient) internal view returns (uint shareBalance_, uint creatorBalance_, uint ownerBalance_) {
         // If the `_recipient` has been allocated a share, then we find the balance that
         // is available for them to claim.
         if (_recipientShares[_recipient] != 0) {
@@ -155,6 +158,12 @@ contract AddressFeeSplitManager is FeeSplitManager {
         // We then need to check if the `_recipient` is the creator of any tokens, and if they
         // are then we need to find out the available amounts to claim.
         creatorBalance_ = pendingCreatorFees(_recipient);
+
+        // We then need to check if the `_recipient` is the owner of the manager, and if they
+        // are then we need to find out the available amounts to claim.
+        if (_recipient == managerOwner) {
+            ownerBalance_ = claimableOwnerFees();
+        }
     }
 
     /**
@@ -193,7 +202,7 @@ contract AddressFeeSplitManager is FeeSplitManager {
      * @return bool If the recipient is valid to receive an allocation
      */
     function isValidRecipient(address _recipient, bytes memory _data) public view override returns (bool) {
-        return _recipientShares[_recipient] != 0 || _creatorTokens[_recipient].length() != 0;
+        return _recipientShares[_recipient] != 0 || _creatorTokens[_recipient].length() != 0 || _recipient == managerOwner;
     }
 
     /**
@@ -210,7 +219,7 @@ contract AddressFeeSplitManager is FeeSplitManager {
      */
     function _captureClaim(address _recipient, bytes memory _data) internal override returns (uint allocation_) {
         // Get our share balance
-        (uint shareBalance, uint creatorBalance) = _balances(_recipient);
+        (uint shareBalance, uint creatorBalance, uint ownerBalance) = _balances(_recipient);
 
         // If the recipient has a share allocation, then increase the amount that the recipient
         // has claimed against their share and register this against their allocation
@@ -228,6 +237,13 @@ contract AddressFeeSplitManager is FeeSplitManager {
             }
 
             allocation_ += creatorBalance;
+        }
+
+        // If the recipient has an owner balance to claim, then action the claim against their
+        // owner share and then increase their allocation by the balance.
+        if (ownerBalance != 0) {
+            _claimedOwnerFees += ownerBalance;
+            allocation_ += ownerBalance;
         }
 
         emit RevenueClaimed(_recipient, allocation_);

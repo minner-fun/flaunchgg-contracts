@@ -512,6 +512,7 @@ contract PositionManagerTest is FlaunchTest {
 
         // Detect our PositionManager swap
         vm.expectEmit();
+
         emit PositionManager.PoolSwap({
             poolId: poolKey.toId(),
             flAmount0: -500040918299108460,
@@ -523,9 +524,9 @@ contract PositionManagerTest is FlaunchTest {
             ispFee0: 0,
             ispFee1: 0,
             uniAmount0: -19499959081700891540,
-            uniAmount1: 503396135662060805,
+            uniAmount1: 38876030146912416699,
             uniFee0: 0,
-            uniFee1: -5033961356620608
+            uniFee1: -388760301469124166
         });
 
         // Detect our Uniswap V4 swap
@@ -555,6 +556,118 @@ contract PositionManagerTest is FlaunchTest {
                 sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             })
         );
+    }
+
+    /**
+     * A bug bounty submission states that allows someone to premine tokens, regardless of the
+     * `premineAmount` which is set for that memecoin or whether they are actually the creator
+     * of that memecoin.
+     *
+     * This vulnerability occurs due to the fact that we use transient storage to allow premining:
+     * ```
+     * if (_params.premineAmount != 0) {
+     *     int premineAmount = _params.premineAmount.toInt256();
+     *     assembly { tstore(IS_PREMINE, premineAmount) }
+     * }
+     * ```
+     *
+     * The side effect of this behavior is that this transient storage remains set for the entire
+     * transaction and is not unique to any specific pool or memecoin.
+     *
+     * As a result, anyone can flaunch a spoof memecoin with an arbitrary `premineAmount` and execute
+     * a premine swap within the same transaction on any other pool prior to their fair launch window
+     * opening.
+     */
+    function test_BugBounty_ExploitTransientPremine(bool isCreator, bool isScheduled, bool isFairLaunch) public {
+        // Define a user that is not the this address
+        address notThisAddress = address(0xa);
+
+        // Launch token with premine
+        address premineCoin = positionManager.flaunch(
+            PositionManager.FlaunchParams({
+                name: 'Premine token',
+                symbol: 'PREMINE',
+                tokenUri: 'https://flaunch.gg/',
+                initialTokenFairLaunch: 1e18,
+                fairLaunchDuration: isFairLaunch ? 30 minutes : 0,
+                premineAmount: 0.5 ether,
+                creator: isCreator ? address(this) : notThisAddress,
+                creatorFeeAllocation: 0,
+                flaunchAt: isScheduled ? block.timestamp + 60 : 0,
+                initialPriceParams: abi.encode(''),
+                feeCalculatorParams: abi.encode(1_000)
+            })
+        );
+
+        // Launch token without premine (future flaunchAt time)
+        address nonPremineCoin = positionManager.flaunch(
+            PositionManager.FlaunchParams({
+                name: 'NOPremine token',
+                symbol: 'NOPREMINE',
+                tokenUri: 'https://flaunch.gg/',
+                initialTokenFairLaunch: 1e18,
+                fairLaunchDuration: 30 minutes,
+                premineAmount: 0,
+                creator: address(this),
+                creatorFeeAllocation: 0,
+                flaunchAt: block.timestamp + 60,
+                initialPriceParams: abi.encode(''),
+                feeCalculatorParams: abi.encode(1_000)
+            })
+        );
+
+        // Get the {PoolKey} that we will swap against
+        PoolKey memory poolKey = positionManager.poolKey(nonPremineCoin);
+
+        // Provide an attacker with funds
+        vm.deal(address(0xa), 100 ether);
+
+        // Prank as attacker
+        vm.startPrank(address(0xa));
+
+        // Provide this test contract enough flETH to make the swap
+        flETH.deposit{value: 100 ether}();
+
+        // Provide the PoolManager with some ETH because otherwise it sulks about being poor
+        flETH.transfer(address(poolManager), 50 ether);
+
+        // Approve the swap
+        flETH.approve(address(poolSwap), type(uint).max);
+
+        // Within the same tx, do a premine swap on the non-premine pool
+        vm.expectRevert();
+        poolSwap.swap(
+            poolKey,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: 0.5 ether,
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            })
+        );
+
+        // We should, however, be able to swap on the premine pool
+        PoolKey memory preminePoolKey = positionManager.poolKey(premineCoin);
+        poolSwap.swap(
+            preminePoolKey,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: 0.5 ether,
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            })
+        );
+
+        // After the initial premine swap, we should not be able to swap on the premine pool if it is scheduled
+        if (isScheduled) { vm.expectRevert(); }
+        poolSwap.swap(
+            preminePoolKey,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: 0.5 ether,
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            })
+        );
+
+        vm.stopPrank();
     }
 
 }

@@ -121,7 +121,7 @@ contract FeeExemptionsTest is FlaunchTest {
         WETH.approve(address(poolSwap), type(uint).max);
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 9970020458801235);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 9970020458800448);
 
         // Action our swap
         _swap(
@@ -145,13 +145,13 @@ contract FeeExemptionsTest is FlaunchTest {
         // higher than that of the previous swap due to new fee exemption amount.
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesSwapped(_poolKey.toId(), true, 5000896186752441, 9970020458801235);
+        emit InternalSwapPool.PoolFeesSwapped(_poolKey.toId(), true, 5000896186752434, 9970020458800448);
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 74775153441009);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 74775153441003);
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 14877575514451723);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 14877575514447595);
 
         // Action our swap
         _swap(
@@ -176,7 +176,7 @@ contract FeeExemptionsTest is FlaunchTest {
         WETH.approve(address(poolSwap), type(uint).max);
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 2507070676188200, 0);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 2507070676188275, 0);
 
         // Action our swap
         _swap(
@@ -191,7 +191,7 @@ contract FeeExemptionsTest is FlaunchTest {
         feeExemptions.setFeeExemption(beneficiary, 75);
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 3761950294486174, 0);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 3761950294486656, 0);
 
         // Action our swap
         _swap(
@@ -209,8 +209,7 @@ contract FeeExemptionsTest is FlaunchTest {
         _addLiquidityToPool(memecoin, 100 ether, false);
 
         // Add fees to the ISP that will be sourced from
-        deal(memecoin, address(positionManager), 20 ether);
-        positionManager.depositFeesMock(_poolKey, 0, 20 ether);
+        deal(memecoin, address(positionManager), 5e27);
 
         // Exempt a beneficiary with a set fee (0.05%)
         address beneficiary = address(poolSwap);
@@ -225,10 +224,7 @@ contract FeeExemptionsTest is FlaunchTest {
         // `PoolFeesReceived` event and shows the swap value via `PoolFeesSwapped`.
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesSwapped(_poolKey.toId(), true, 503560711941529815, 1000000000000000000);
-
-        vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 2517803559707649, 0);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 2507070676508045, 0);
 
         // Action our swap
         _swap(
@@ -246,10 +242,7 @@ contract FeeExemptionsTest is FlaunchTest {
         // received will be higher as there is a reduced fee exemption (75% fees, rather than 50%).
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesSwapped(_poolKey.toId(), true, 503560711941529815, 1000000000000000000);
-
-        vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 3776705339561473, 0);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 3761950296522336, 0);
 
         // Action our swap
         _swap(
@@ -303,7 +296,7 @@ contract FeeExemptionsTest is FlaunchTest {
         WETH.approve(address(poolSwap), type(uint).max);
 
         vm.expectEmit();
-        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 19940040917602470);
+        emit InternalSwapPool.PoolFeesReceived(_poolKey.toId(), 0, 19940040917600897);
 
         // Action our swap
         _swap(

@@ -144,7 +144,7 @@ contract FlaunchBridgeTest is FlaunchTest {
         flaunch.initializeBridge(tokenId, ALTERNATIVE_CHAIN_ID);
     }
 
-    function test_CanRebridgeAfterBridgingWindow(uint _invalidTimeDelta, uint _validTimeDelta) public {
+    function test_CanRebridgeAfterBridgingWindow(uint48 _invalidTimeDelta, uint48 _validTimeDelta) public {
         // Set our two testing timestamps; one which is below the window and one which is
         // equal to, or above, the window.
         vm.assume(_invalidTimeDelta < flaunch.MAX_BRIDGING_WINDOW());

@@ -291,15 +291,39 @@ contract BidWall is AccessControl, Ownable {
         // If we have memecoins available, then we transfer those to the treasury
         if (memecoinWithdrawn != 0) {
             // Find our non-ETH token and the {TokenTreasury} attached to it
-            IMemecoin memecoin = _poolKey.memecoin(nativeToken);
-            address memecoinTreasury = memecoin.treasury();
+            address memecoin = address(_poolKey.memecoin(nativeToken));
+            address memecoinTreasury = _getMemecoinTreasury(_poolKey, memecoin);
 
             // Transfer the tokens to the memecoin treasury
-            memecoin.transfer(memecoinTreasury, memecoinWithdrawn);
+            IERC20(memecoin).transfer(memecoinTreasury, memecoinWithdrawn);
             emit BidWallRewardsTransferred(poolId, memecoinTreasury, memecoinWithdrawn);
         }
 
         emit BidWallRepositioned(poolId, ethWithdrawn + totalFees, _poolInfo.tickLower, _poolInfo.tickUpper);
+    }
+
+    /**
+     * Retrieves the treasury address for a given memecoin.
+     *
+     * @param _poolKey The {PoolKey} that we are finding the treasury for
+     * @param _memecoin The address of the memecoin
+     *
+     * @return memecoinTreasury_ The treasury address for the memecoin
+     */
+    function _getMemecoinTreasury(PoolKey memory _poolKey, address _memecoin) internal view virtual returns (address memecoinTreasury_) {
+        memecoinTreasury_ = IMemecoin(_memecoin).treasury();
+    }
+
+    /**
+     * Retrieves the creator address for a given memecoin.
+     *
+     * @param _poolKey The {PoolKey} that we are finding the creator for
+     * @param _memecoin The address of the memecoin
+     *
+     * @return creator_ The creator address for the memecoin
+     */
+    function _getMemecoinCreator(PoolKey memory _poolKey, address _memecoin) internal view virtual returns (address creator_) {
+        creator_ = IMemecoin(_memecoin).creator();
     }
 
     /**
@@ -315,7 +339,7 @@ contract BidWall is AccessControl, Ownable {
      */
     function setDisabledState(PoolKey memory _key, bool _disable) external {
         // Ensure that the caller is the pool creator
-        if (msg.sender != _key.memecoin(nativeToken).creator()) revert CallerIsNotCreator();
+        if (msg.sender != _getMemecoinCreator(_key, address(_key.memecoin(nativeToken)))) revert CallerIsNotCreator();
 
         // We only need to process the following logic if anything is changing
         PoolInfo storage _poolInfo = poolInfo[_key.toId()];
@@ -376,8 +400,8 @@ contract BidWall is AccessControl, Ownable {
         _poolInfo.cumulativeSwapFees = 0;
 
         // Unwrap the non-native token and find the treasury address
-        IMemecoin memecoin = _key.memecoin(nativeToken);
-        address memecoinTreasury = memecoin.treasury();
+        address memecoin = address(_key.memecoin(nativeToken));
+        address memecoinTreasury = _getMemecoinTreasury(_key, memecoin);
 
         // Pending ETH fees are stored in the {PositionManager}. So if we have a value there, then we
         // will need to transfer this from the {PositionManager}, rather than this contract.
@@ -393,7 +417,7 @@ contract BidWall is AccessControl, Ownable {
 
         // Transfer the flTokens withdrawn from the legacy position to the governance contract
         if (memecoinWithdrawn != 0) {
-            memecoin.transfer(memecoinTreasury, memecoinWithdrawn);
+            IERC20(memecoin).transfer(memecoinTreasury, memecoinWithdrawn);
             emit BidWallRewardsTransferred(poolId, memecoinTreasury, memecoinWithdrawn);
         }
 

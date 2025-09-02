@@ -97,6 +97,9 @@ contract MemecoinTreasuryTest is FlaunchTest {
     }
 
     function test_CanClaimFees_FlethAdded(uint _flethAdded) public {
+        // Provide sufficient flETH to fund it
+        deal(address(WETH), address(positionManager), _flethAdded);
+
         // Set the {PositionManager} fees for {MemecoinTreasury} to a positive amount
         vm.assume(_flethAdded > 0);
         positionManager.allocateFeesMock({
@@ -104,12 +107,6 @@ contract MemecoinTreasuryTest is FlaunchTest {
             _recipient: payable(address(memecoinTreasury)),
             _amount: _flethAdded
         });
-
-        // Provide sufficient native token to the {PositionManager}
-        vm.startPrank(address(positionManager));
-        deal(address(positionManager), _flethAdded);
-        WETH.deposit{value: _flethAdded}();
-        vm.stopPrank();
 
         // Record initial balance
         uint initialBalance = WETH.balanceOf(address(memecoinTreasury));
@@ -126,6 +123,9 @@ contract MemecoinTreasuryTest is FlaunchTest {
     }
 
     function test_CanClaimFeesDuringTransaction(uint _flethAdded) public {
+        // Provide sufficient native token to the {PositionManager}
+        deal(address(WETH), address(positionManager), _flethAdded);
+
         // Set the {PositionManager} fees for {MemecoinTreasury} to a positive amount
         vm.assume(_flethAdded > 0);
         positionManager.allocateFeesMock({
@@ -133,12 +133,6 @@ contract MemecoinTreasuryTest is FlaunchTest {
             _recipient: payable(address(memecoinTreasury)),
             _amount: _flethAdded
         });
-
-        // Provide sufficient native token to the {PositionManager}
-        vm.startPrank(address(positionManager));
-        deal(address(positionManager), _flethAdded);
-        WETH.deposit{value: _flethAdded}();
-        vm.stopPrank();
 
         // Record initial balance
         uint initialBalance = WETH.balanceOf(address(memecoinTreasury));

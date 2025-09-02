@@ -13,6 +13,7 @@ import {IPoolManager, PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
 import {BidWall} from '@flaunch/bidwall/BidWall.sol';
+import {AnyBidWall} from '@flaunch/bidwall/AnyBidWall.sol';
 import {BuyBackAndBurnFlay} from '@flaunch/subscribers/BuyBackAndBurnFlay.sol';
 import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {FastFlaunchZap} from '@flaunch/zaps/FastFlaunchZap.sol';
@@ -68,6 +69,7 @@ contract FlaunchTest is Deployers {
     uint160 public constant FL_SQRT_PRICE_2_1 = 56022770974786139918731938227;
 
     BidWall internal bidWall;
+    AnyBidWall internal anyBidWall;
     InitialPrice internal initialPrice;
     PoolManager internal poolManager;
     FairLaunch internal fairLaunch;
@@ -151,7 +153,10 @@ contract FlaunchTest is Deployers {
         // Deploy the BidWall
         bidWall = new BidWall(address(flETH), address(poolManager), address(this));
         bidWall.grantRole(ProtocolRoles.POSITION_MANAGER, VALID_POSITION_MANAGER_ADDRESS);
-        bidWall.grantRole(ProtocolRoles.POSITION_MANAGER, VALID_ANY_POSITION_MANAGER_ADDRESS);
+
+        // Deploy the AnyBidWall
+        anyBidWall = new AnyBidWall(address(flETH), address(poolManager), address(this));
+        anyBidWall.grantRole(ProtocolRoles.POSITION_MANAGER, VALID_ANY_POSITION_MANAGER_ADDRESS);
 
         // Deploy the FairLaunch
         fairLaunch = new FairLaunch(poolManager);
@@ -196,7 +201,7 @@ contract FlaunchTest is Deployers {
             address(feeEscrow),
             address(feeExemptions),
             address(actionManager),
-            address(bidWall)
+            address(anyBidWall)
         ), VALID_ANY_POSITION_MANAGER_ADDRESS);
 
         anyPositionManager = AnyPositionManagerMock(VALID_ANY_POSITION_MANAGER_ADDRESS);

@@ -83,11 +83,13 @@ contract FlaunchZap {
      * the flaunch token will be transferred directly to the manager.
      *
      * @param manager The manager implementation to use
+     * @param permissions The permissions contract to use for a newly deployed manager
      * @param initializeData The data to initialize the manager with
      * @param depositData The data to deposit to the manager with
      */
     struct TreasuryManagerParams {
         address manager;
+        address permissions;
         bytes initializeData;
         bytes depositData;
     }
@@ -138,13 +140,15 @@ contract FlaunchZap {
      * Flaunches a memecoin without any additional logic.
      *
      * @param _flaunchParams The base flaunch parameters
+     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
      *
      * @return memecoin_ The created ERC20 token address
      * @return ethSpent_ The amount of ETH spent during the premine
      * @return deployedManager_ The address of the manager that was deployed
      */
     function flaunch(
-        PositionManager.FlaunchParams memory _flaunchParams
+        PositionManager.FlaunchParams memory _flaunchParams,
+        bytes calldata _premineSwapHookData
     ) external payable refundsEth returns (address memecoin_, uint ethSpent_, address) {
         // Flaunch our token and capture the memecoin address
         memecoin_ = _flaunch(_flaunchParams);
@@ -152,7 +156,7 @@ contract FlaunchZap {
         // Allows the creator to premine their own token
         if (_flaunchParams.premineAmount != 0) {
             // Premine tokens to this contract
-            ethSpent_ = _premine(memecoin_, _flaunchParams.premineAmount);
+            ethSpent_ = _premine(memecoin_, _flaunchParams.premineAmount, _premineSwapHookData);
 
             // Send any remaining premined memecoins to the creator
             uint remainingMemecoins = IERC20(memecoin_).balanceOf(address(this));
@@ -166,6 +170,7 @@ contract FlaunchZap {
      * Flaunches a memecoin whilst allowing for any additional logic.
      *
      * @param _flaunchParams The base flaunch parameters
+     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
      * @param _whitelistParams Whitelist related flaunch logic
      * @param _airdropParams Airdrop related flaunch logic
      * @param _treasuryManagerParams Treasury Manager related flaunch logic
@@ -176,6 +181,7 @@ contract FlaunchZap {
      */
     function flaunch(
         PositionManager.FlaunchParams memory _flaunchParams,
+        bytes calldata _premineSwapHookData,
         WhitelistParams calldata _whitelistParams,
         AirdropParams calldata _airdropParams,
         TreasuryManagerParams calldata _treasuryManagerParams
@@ -196,7 +202,7 @@ contract FlaunchZap {
         // Allows the creator to premine their own token
         if (_flaunchParams.premineAmount != 0) {
             // Premine tokens to this contract
-            ethSpent_ = _premine(memecoin_, _flaunchParams.premineAmount);
+            ethSpent_ = _premine(memecoin_, _flaunchParams.premineAmount, _premineSwapHookData);
 
             // Check if we are airdropping any of the tokens that we premined
             if (_airdropParams.airdropAmount != 0) {
@@ -221,6 +227,38 @@ contract FlaunchZap {
         if (_treasuryManagerParams.manager != address(0)) {
             deployedManager_ = _createWithManagerZap(memecoin_, creator, _treasuryManagerParams);
         }
+    }
+
+    /**
+     * Deploys an approved manager, initializes it and sets permissions in a single transaction.
+     *
+     * @param _managerImplementation The address of the approved implementation
+     * @param _owner The owner address of the manager
+     * @param _data The initialization data for the deployed manager
+     * @param _permissions The permissions contract to use for the manager
+     *
+     * @return manager_ The freshly deployed {TreasuryManager} contract address
+     */
+    function deployAndInitializeManager(
+        address _managerImplementation,
+        address _owner,
+        bytes calldata _data,
+        address _permissions
+    ) public returns (
+        address payable manager_
+    ) {
+        // Deploy our manager implementation
+        manager_ = treasuryManagerFactory.deployAndInitializeManager({
+            _managerImplementation: _managerImplementation,
+            _owner: address(this),
+            _data: _data
+        });
+
+        // Set the permissions for the manager
+        ITreasuryManager(manager_).setPermissions(_permissions);
+
+        // Set the owner to the actual owner
+        ITreasuryManager(manager_).transferManagerOwnership(_owner);
     }
 
     /**
@@ -258,9 +296,10 @@ contract FlaunchZap {
         // Send the flaunch token to the manager
         if (treasuryManagerFactory.approvedManagerImplementation(_treasuryManagerParams.manager)) {
             // If it is a valid manager implementation, deploy a new instance
+            address initialOwner = _treasuryManagerParams.permissions == address(0) ? _creator : address(this);
             deployedManager_ = treasuryManagerFactory.deployAndInitializeManager({
                 _managerImplementation: _treasuryManagerParams.manager,
-                _owner: _creator,
+                _owner: initialOwner,
                 _data: _treasuryManagerParams.initializeData
             });
 
@@ -275,6 +314,14 @@ contract FlaunchZap {
                 _creator: _creator,
                 _data: _treasuryManagerParams.depositData
             });
+
+            // if permissions are provided for the new manager, then set them
+            if (_treasuryManagerParams.permissions != address(0)) {
+                ITreasuryManager(deployedManager_).setPermissions(_treasuryManagerParams.permissions);
+
+                // transfer ownership to the creator
+                ITreasuryManager(deployedManager_).transferManagerOwnership(_creator);
+            }
         } else if (treasuryManagerFactory.managerImplementation(_treasuryManagerParams.manager) != address(0)) {
             // Approve the manager to pull the flaunch token during initialization
             flaunchContract.approve(_treasuryManagerParams.manager, tokenId);
@@ -317,10 +364,11 @@ contract FlaunchZap {
      *
      * @param _memecoin The address of the flaunched ERC20
      * @param _premineAmount The amount of tokens the user wants to purchase from initial supply
+     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
      *
      * @return ethSpent_ The amount of ETH spent during the premine
      */
-    function _premine(address _memecoin, uint _premineAmount) internal returns (uint ethSpent_) {
+    function _premine(address _memecoin, uint _premineAmount, bytes calldata _premineSwapHookData) internal returns (uint ethSpent_) {
         // Capture the PoolKey that was created during the 'flaunch'
         PoolKey memory _poolKey = positionManager.poolKey(_memecoin);
 
@@ -348,7 +396,8 @@ contract FlaunchZap {
                 sqrtPriceLimitX96: !flipped
                     ? TickMath.MIN_SQRT_PRICE + 1
                     : TickMath.MAX_SQRT_PRICE - 1
-            })
+            }),
+            _hookData: _premineSwapHookData
         });
 
         // Calculate the amount of flETH swapped from the delta

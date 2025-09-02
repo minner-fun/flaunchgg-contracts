@@ -12,4 +12,12 @@ contract TreasuryManagerMock is TreasuryManager {
         // ..
     }
 
+    function claim() external pure returns (uint) {
+        return 0;
+    }
+
+    function balances(address _recipient) external pure returns (uint) {
+        return 0;
+    }
+
 }

@@ -17,8 +17,8 @@ import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol';
 import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
 
 import {BidWall} from '@flaunch/bidwall/BidWall.sol';
-
 import {InternalSwapPool} from '@flaunch/hooks/InternalSwapPool.sol';
+
 
 /**
  * This is a Uniswap V4 hook contract that enables Internal Swap Pool and BidWall for

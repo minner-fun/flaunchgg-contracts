@@ -50,7 +50,15 @@ contract MerkleAirdropTest is FlaunchTest {
 
     /// addAirdrop()
     function test_addAirdrop_RevertsForNonApprovedCaller(address _caller) external {
-        vm.prank(_caller);
+        vm.assume(_caller != address(0));
+
+        // deploy memecoin and send to the caller
+        _deployMemecoin();
+        IERC20(merkleJSON.token).transfer(_caller, IERC20(merkleJSON.token).balanceOf(address(this)));
+
+        vm.startPrank(_caller);
+        IERC20(merkleJSON.token).approve(address(merkleAirdrop), merkleJSON.totalTokensToAirdropInWei);
+
         vm.expectRevert(IBaseAirdrop.NotApprovedAirdropCreator.selector);
         _addAirdrop();
     }
@@ -504,7 +512,7 @@ contract MerkleAirdropTest is FlaunchTest {
             flaunchAt: 0,
             initialPriceParams: abi.encode(''),
             feeCalculatorParams: abi.encode(1_000)
-        }));
+        }), bytes(''));
         assertEq(memecoin, merkleJSON.token, "Token address mismatch");
 
         IERC20(memecoin).approve(address(merkleAirdrop), merkleJSON.totalTokensToAirdropInWei);

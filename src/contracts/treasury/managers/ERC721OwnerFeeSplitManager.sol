@@ -29,10 +29,13 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      * When initializing our manager we define an array of ERC721 contracts that will receive a
      * share of the fees earned.
      *
+     * @member creatorShare The share that a creator will earn from their token
+     * @member ownerShare The share that the manager owner will earn from their token
      * @member shares Metadata for the ERC721 contracts
      */
     struct InitializeParams {
         uint creatorShare;
+        uint ownerShare;
         ERC721Share[] shares;
     }
 
@@ -45,7 +48,6 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      * result is funds being distributed incorrectly.
      *
      * @member erc721 The address of the ERC721 contract
-     * @member chain The chain ID that the ERC721 is deployed on
      * @member share The share percentage (to 5dp) that the collection will receive
      * @member totalSupply The total number of NFTs in the collection
      */
@@ -99,8 +101,8 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
 
         emit ManagerInitialized(_owner, params);
 
-        // Validate and set our creator share
-        _setCreatorShare(params.creatorShare);
+        // Validate and set our creator and owner shares
+        _setShares(params.creatorShare, params.ownerShare);
 
         // Ensure that each of our provided ERC721 params are correct
         uint totalCollectionShares;
@@ -130,10 +132,11 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      *
      * @param _recipient The account to find the balance of
      *
-     * @return balance_ The amount of ETH available to claim by the `_recipient`
+     * @return uint The amount of ETH available to claim by the `_recipient`
      */
-    function balances(address _recipient) public view override returns (uint balance_) {
-        balance_ += pendingCreatorFees(_recipient);
+    function balances(address _recipient) public view override returns (uint) {
+        (uint creatorBalance, uint ownerBalance) = _balances(_recipient);
+        return creatorBalance + ownerBalance;
     }
 
     /**
@@ -145,6 +148,11 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      * @return balance_ The amount of ETH available to claim by the `_recipient`
      */
     function balances(address _recipient, bytes calldata _data) public view returns (uint balance_) {
+        // If we have no data passed, then we can just return the balances
+        if (_data.length == 0) {
+            return balances(_recipient);
+        }
+
         // Calculate the amount that each token should be offered based on the total allocation
         // amount, regardless of what has already been claimed.
         (ClaimParams memory claimParams) = abi.decode(_data, (ClaimParams));
@@ -158,7 +166,39 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
             }
         }
 
-        balance_ += pendingCreatorFees(_recipient);
+        // Get our user's base balance and add it to their token lookup balance
+        (uint creatorBalance, uint ownerBalance) = _balances(_recipient);
+        balance_ += creatorBalance + ownerBalance;
+    }
+
+    /**
+     * Finds the balances available to the recipient.
+     *
+     * @param _recipient The account to find the balance of
+     *
+     * @return creatorBalance_ The amount of creator fees available to claim by the `_recipient`
+     * @return ownerBalance_ The amount of owner fees available to claim by the `_recipient`
+     */
+    function _balances(address _recipient) internal view returns (uint creatorBalance_, uint ownerBalance_) {
+        // We then need to check if the `_recipient` is the creator of any tokens, and if they
+        // are then we need to find out the available amounts to claim.
+        creatorBalance_ = pendingCreatorFees(_recipient);
+
+        // We then need to check if the `_recipient` is the owner of the manager, and if they
+        // are then we need to find out the available amounts to claim.
+        if (_recipient == managerOwner) {
+            ownerBalance_ = claimableOwnerFees();
+        }
+    }
+
+    /**
+     * Allows for a claim call to be made without requiring any additional requirements for
+     * bytes to be passed.
+     *
+     * @return uint The amount claimed from the call
+     */
+    function claim() public returns (uint) {
+        return _claim(abi.encode(''));
     }
 
     /**
@@ -201,7 +241,7 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
             }
 
             // Increase the recipient share
-            recipientShare_ += (erc721Share.share / erc721Share.totalSupply) * tokenIds;
+            recipientShare_ += FullMath.mulDiv(erc721Share.share, tokenIds, erc721Share.totalSupply);
         }
     }
 
@@ -234,24 +274,41 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      * @return bool If the recipient is valid to receive an allocation
      */
     function isValidRecipient(address _recipient, bytes memory _data) public view override returns (bool) {
-        // Unpack our claim parameters
-        (ClaimParams memory claimParams) = abi.decode(_data, (ClaimParams));
-
-        // Validate the claim parameters
-        _validateClaimParams(claimParams);
-
-        // Iterate over our ERC721 contracts and their respective tokenIds to confirm that the user
-        // has same-chain ownership.
-        for (uint i; i < claimParams.erc721.length; ++i) {
-            for (uint k; k < claimParams.tokenIds[i].length; ++k) {
-                // Validates that the recipient has ownership of the tokenId
-                if (!hasOwnership(_recipient, claimParams.erc721[i], claimParams.tokenIds[i][k])) {
-                    return false;
-                }
-            }
+        // If the user is an owner of the manager, then they are valid
+        if (_recipient == managerOwner) {
+            return true;
         }
 
-        return true;
+        // If the user is a creator, then we need to check if they have any tokens that are eligible
+        // to be claimed.
+        if (_creatorTokens[_recipient].length() > 0) {
+            return true;
+        }
+        
+        // If we have data passed, then we assume that we are validating a token claim
+        if (_data.length > 0) {
+            // Unpack our claim parameters
+            (ClaimParams memory claimParams) = abi.decode(_data, (ClaimParams));
+
+            // Validate the claim parameters
+            _validateClaimParams(claimParams);
+
+            // Iterate over our ERC721 contracts and their respective tokenIds to confirm that the user
+            // has same-chain ownership.
+            for (uint i; i < claimParams.erc721.length; ++i) {
+                for (uint k; k < claimParams.tokenIds[i].length; ++k) {
+                    // Validates that the recipient has ownership of the tokenId
+                    if (!hasOwnership(_recipient, claimParams.erc721[i], claimParams.tokenIds[i][k])) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        // If we have no data passed, and the `_recipient` is not a creator or owner, then they are not valid
+        return false;
     }
 
     /**
@@ -295,10 +352,23 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
                 }
             }
         }
+        
+        // Get our creator and owner balances for the recipient
+        (uint creatorBalance, uint ownerBalance) = _balances(_recipient);
 
         // Iterate over the tokens that the user created to register the claim
-        for (uint i; i < _creatorTokens[_recipient].length(); ++i) {
-            allocation_ += _creatorClaim(internalIds[_creatorTokens[_recipient].at(i)]);
+        if (creatorBalance != 0) {
+            for (uint i; i < _creatorTokens[_recipient].length(); ++i) {
+                _creatorClaim(internalIds[_creatorTokens[_recipient].at(i)]);
+            }
+
+            allocation_ += creatorBalance;
+        }
+
+        // If the recipient is the owner of the manager, then we need to claim their owner share
+        if (_recipient == managerOwner && ownerBalance != 0) {
+            _claimedOwnerFees += ownerBalance;
+            allocation_ += ownerBalance;
         }
     }
 
@@ -312,14 +382,14 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      */
     function _tokenClaimAvailable(address _erc721, uint _tokenId) internal view returns (uint claimAvailable_) {
         /**
-         * Find the total amount all time claimed into manager (splitFees) find the share of the
+         * Find the total amount all time claimed into manager (`managerFees()`) find the share of the
          * individual token (`erc721Shares[erc721].share / totalSupply`). We then minus the amount
          * already claimed by the token (`amountClaimed[erc721][tokenId]`).
          *
-         * The creator fees are already reduced in the splitFees.
+         * The creator fees are already reduced in the `managerFees()`.
          */
         ERC721Share memory erc721Share = erc721Shares[_erc721];
-        claimAvailable_ = FullMath.mulDiv(splitFees, erc721Share.share, erc721Share.totalSupply);
+        claimAvailable_ = FullMath.mulDiv(managerFees(), erc721Share.share, erc721Share.totalSupply);
         claimAvailable_ /= VALID_SHARE_TOTAL;
 
         // Reduce the amount we can claim for the token based on the amount that has already
@@ -353,44 +423,6 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
         // Basic validation to ensure lengths are correct
         if (_claimParams.erc721.length == 0 || _claimParams.erc721.length != _claimParams.tokenIds.length) {
             revert InvalidClaimParams();
-        }
-        
-        // Calculate the maximum possible number of token combinations
-        uint maxTokenCount;
-        for (uint i; i < _claimParams.erc721.length; ++i) {
-            maxTokenCount += _claimParams.tokenIds[i].length;
-        }
-        
-        // Create an array to track seen token hashes
-        bytes32[] memory seenTokenHashes = new bytes32[](maxTokenCount);
-        uint seenTokensCount;
-        
-        address erc721Contract;
-        uint tokenId;
-        bytes32 tokenHash;
-        
-        // Iterate through each ERC721 contracts
-        for (uint i; i < _claimParams.erc721.length; ++i) {
-            erc721Contract = _claimParams.erc721[i];
-            
-            // For each token ID in this contract, check if this combination has been seen before
-            for (uint k; k < _claimParams.tokenIds[i].length; ++k) {
-                tokenId = _claimParams.tokenIds[i][k];
-                
-                // Create a unique hash for this erc721 + tokenId combination
-                tokenHash = keccak256(abi.encodePacked(erc721Contract, tokenId));
-                
-                // Check if we've already seen this token
-                for (uint j; j < seenTokensCount; ++j) {
-                    if (seenTokenHashes[j] == tokenHash) {
-                        revert DuplicateTokenId(erc721Contract, tokenId);
-                    }
-                }
-                
-                // Mark this combination as seen
-                seenTokenHashes[seenTokensCount] = tokenHash;
-                ++seenTokensCount;
-            }
         }
     }
 

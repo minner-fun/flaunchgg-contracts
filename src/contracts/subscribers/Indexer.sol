@@ -47,7 +47,10 @@ contract IndexerSubscriber is Ownable {
     }
 
     /// Maps a PoolId to the token index information
-    mapping (PoolId _poolId => Index _index) public poolIndex;
+    mapping (PoolId _poolId => Index _index) internal _poolIndex;
+
+    /// Maps a PoolId to a Flaunch contract
+    mapping (PoolId _poolId => Flaunch _flaunch) internal _poolFlaunch;
 
     /// Maps each notifier to the flaunch contract that it will represent
     mapping (address _notifier => address _flaunch) internal _notifierFlaunch;
@@ -98,12 +101,45 @@ contract IndexerSubscriber is Ownable {
         (uint tokenId) = abi.decode(_data, (uint));
 
         // Store our token information, relative to the PoolId
-        poolIndex[_poolId] = Index({
+        _poolIndex[_poolId] = Index({
             flaunch: address(flaunch),
             memecoin: flaunch.memecoin(tokenId),
             memecoinTreasury: flaunch.memecoinTreasury(tokenId),
             tokenId: tokenId
         });
+
+        // Store our flaunch contract relative to the PoolId
+        _poolFlaunch[_poolId] = flaunch;
+    }
+
+    /**
+     * Returns the index information for a given PoolId.
+     *
+     * @dev To conform to existing integrations, we return the struct members individually.
+     *
+     * @param _poolId The PoolId to get the index information for
+     *
+     * @return flaunch_ The {Flaunch} contract that launched the token
+     * @return memecoin_ The memecoin address
+     * @return memecoinTreasury_ The memecoin treasury address
+     * @return tokenId_ The tokenId created with the pool (0 if burned)
+     */
+    function poolIndex(PoolId _poolId) public view returns (address flaunch_, address memecoin_, address memecoinTreasury_, uint tokenId_) {
+        // Get the index information for the given PoolId
+        Index memory poolIndex_ = _poolIndex[_poolId];
+
+        // Before returning the tokenId that was used to create the pool, we need to first check if
+        // the ownership of the token has been burned. If it has been burned and future contract calls
+        // depend on this value, then they could receive a revert.
+        if (poolIndex_.tokenId != 0) {
+            try _poolFlaunch[_poolId].ownerOf(poolIndex_.tokenId) returns (address owner) {
+                // ..
+            } catch {
+                poolIndex_.tokenId = 0;
+            }
+        }
+
+        return (poolIndex_.flaunch, poolIndex_.memecoin, poolIndex_.memecoinTreasury, poolIndex_.tokenId);
     }
 
     /**
@@ -148,12 +184,15 @@ contract IndexerSubscriber is Ownable {
                 poolId = flaunch.positionManager().poolKey(memecoin).toId();
 
                 // Store our validated index data
-                poolIndex[poolId] = Index({
+                _poolIndex[poolId] = Index({
                     flaunch: address(flaunch),
                     memecoin: memecoin,
                     memecoinTreasury: flaunch.memecoinTreasury(tokenId),
                     tokenId: tokenId
                 });
+
+                // Store our flaunch contract relative to the PoolId
+                _poolFlaunch[poolId] = flaunch;
             }
         }
     }

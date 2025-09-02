@@ -74,6 +74,26 @@ contract IndexerTest is FlaunchTest {
         assertEq(indexedTokenId, tokenId2);
     }
 
+    function test_CanIndexDeletedToken() public {
+        // Ensure that our indexer is set up correctly
+        _deploySubscriber();
+        _setNotifier();
+
+        // Create our base token
+        (address memecoin, uint tokenId, PoolKey memory poolKey) = _flaunchToken();
+
+        // Burn the token
+        flaunch.burn(tokenId);
+
+        // Get the poolIndex information from the indexer
+        (address indexedFlaunch, address indexedMemecoin,, uint indexedTokenId) = indexer.poolIndex(poolKey.toId());
+
+        // We should expect the usual information, but the tokenId should be 0 as it was burned
+        assertEq(indexedFlaunch, address(flaunch));
+        assertEq(indexedMemecoin, memecoin);
+        assertEq(indexedTokenId, 0);
+    }
+
     function _deploySubscriber() internal {
         positionManager.notifier().subscribe(address(indexer), '');
     }

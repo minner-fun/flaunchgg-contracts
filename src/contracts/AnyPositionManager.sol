@@ -120,7 +120,7 @@ contract AnyPositionManager is BaseHook, FeeDistributor, InternalSwapPool, Store
     }
 
     /// The minimum amount before a distribution is triggered
-    uint public constant MIN_DISTRIBUTE_THRESHOLD = 0.001 ether;
+    uint public constant MIN_DISTRIBUTE_THRESHOLD = 0.0001 ether;
 
     /// The contract that will be used for flaunching tokens
     IAnyFlaunch public flaunchContract;
@@ -185,12 +185,13 @@ contract AnyPositionManager is BaseHook, FeeDistributor, InternalSwapPool, Store
      * @dev Can only be called by the owner, to prevent duplicate poolKeys
      */
     function flaunch(FlaunchParams calldata _params) external {
-        // allow only the approved creators to flaunch
+        // Allow only the approved creators to flaunch
         if (!approvedMemecoinCreator[msg.sender]) revert CallerIsNotApprovedCreator();
 
+        // Check if the memecoin has already been flaunched
         if (flaunchContract.tokenId(_params.memecoin) != 0) revert AlreadyFlaunched();
 
-        // add the memecoin to the flaunch contract
+        // Add the memecoin to the flaunch contract
         (address payable memecoinTreasury, uint tokenId) = flaunchContract.flaunch(_params);
 
         // Check if our pool currency is flipped
@@ -668,9 +669,7 @@ contract AnyPositionManager is BaseHook, FeeDistributor, InternalSwapPool, Store
         // Find the distribution amount across our different users. The amount that treasury
         // receives will be determined by variables throughout the distribution flow, such as
         // the BidWall being disabled, etc.
-        // @dev Counter to the naming conventions of `feeSplit`, the `creatorFee_` is actually used
-        // as an LP fee in the AnyPositionManager for use in a `donate` call.
-        (uint bidWallFee, uint lpFee, uint protocolFee) = feeSplit(poolId, distributeAmount);
+        (uint bidWallFee, uint creatorFee, uint protocolFee) = feeSplit(poolId, distributeAmount);
         uint treasuryFee;
 
         // Load our memecoin so that we can query the creator and treasury
@@ -680,20 +679,17 @@ contract AnyPositionManager is BaseHook, FeeDistributor, InternalSwapPool, Store
         address poolCreator = flaunchContract.creator(memecoin);
         bool poolCreatorBurned = poolCreator == address(0);
 
-        if (lpFee != 0) {
-            /**
-             * Any LP fees are donated via Uniswap V4. Donates the given currency amounts to the in-range
-             * liquidity providers of a pool.
-             *
-             * @dev Calls to donate can be frontrun adding just-in-time liquidity, with the aim of receiving
-             * a portion donated funds. As our threshold is low enough this shouldn't be an issue.
-             */
-            poolManager.donate({
-                key: _poolKey,
-                amount0: Currency.unwrap(_poolKey.currency0) == nativeToken ? lpFee : 0,
-                amount1: Currency.unwrap(_poolKey.currency1) == nativeToken ? 0 : lpFee,
-                hookData: abi.encode('')
-            });
+        if (creatorFee != 0) {
+            // Ensure that the pool creator has not burned their ownership and send them the fees
+            if (!poolCreatorBurned) {
+                _allocateFees(poolId, poolCreator, creatorFee);
+            }
+            // If the pool creator has burned their ownership, then we instead send fees directly
+            // to the BidWall.
+            else {
+                bidWallFee += creatorFee;
+                creatorFee = 0;
+            }
         }
 
         if (bidWallFee != 0) {
@@ -728,7 +724,7 @@ contract AnyPositionManager is BaseHook, FeeDistributor, InternalSwapPool, Store
             _allocateFees(poolId, protocolFeeRecipient, protocolFee);
         }
 
-        emit PoolFeesDistributed(poolId, distributeAmount, lpFee, bidWallFee, treasuryFee, protocolFee);
+        emit PoolFeesDistributed(poolId, distributeAmount, creatorFee, bidWallFee, treasuryFee, protocolFee);
     }
 
     /**
