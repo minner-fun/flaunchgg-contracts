@@ -52,7 +52,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
      */
     struct TokenInfo {
         address memecoin;
-        address payable memecoinTreasury;
+        address payable memecoinTreasury;  // memecoin金库
     }
 
     /**
