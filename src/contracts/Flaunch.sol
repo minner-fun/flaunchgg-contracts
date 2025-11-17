@@ -26,23 +26,23 @@ import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
  */
 contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
-    error CallerNotL2ToL2CrossDomainMessenger();
-    error CallerIsNotPositionManager();
-    error CreatorFeeAllocationInvalid(uint24 _allocation, uint _maxAllocation);
-    error InvalidCrossDomainSender();
-    error InvalidDestinationChain();
-    error InvalidFlaunchSchedule();
-    error InvalidInitialSupply(uint _initialSupply);
-    error PremineExceedsInitialAmount(uint _buyAmount, uint _initialSupply);
-    error TokenAlreadyBridging();
-    error TokenAlreadyBridged();
-    error UnknownMemecoin();
+    error CallerNotL2ToL2CrossDomainMessenger(); // 调用者不是L2到L2跨域消息传递器
+    error CallerIsNotPositionManager(); // 调用者不是PositionManager
+    error CreatorFeeAllocationInvalid(uint24 _allocation, uint _maxAllocation); // 创建者费用分配无效
+    error InvalidCrossDomainSender(); // 无效的跨域发送者
+    error InvalidDestinationChain(); // 无效的目的链
+    error InvalidFlaunchSchedule(); // 无效的Flaunch计划
+    error InvalidInitialSupply(uint _initialSupply); // 无效的初始供应量
+    error PremineExceedsInitialAmount(uint _buyAmount, uint _initialSupply); // 预挖超过初始供应量
+    error TokenAlreadyBridging(); // 代币正在桥接
+    error TokenAlreadyBridged(); // 代币已桥接
+    error UnknownMemecoin(); // 未知代币
 
-    event TokenBridging(uint _tokenId, uint _chainId, address _memecoin);
-    event TokenBridged(uint _tokenId, uint _chainId, address _memecoin, uint _messageSource);
-    event BaseURIUpdated(string _newBaseURI);
-    event MemecoinImplementationUpdated(address _newImplementation);
-    event MemecoinTreasuryImplementationUpdated(address _newImplementation);
+    event TokenBridging(uint _tokenId, uint _chainId, address _memecoin); // 代币桥接
+    event TokenBridged(uint _tokenId, uint _chainId, address _memecoin, uint _messageSource); // 代币已桥接
+    event BaseURIUpdated(string _newBaseURI); // 基础URI更新
+    event MemecoinImplementationUpdated(address _newImplementation); // 代币实现更新
+    event MemecoinTreasuryImplementationUpdated(address _newImplementation); // 代币金库实现更新
 
     /**
      * Stores related memecoin contract implementation addresses.
