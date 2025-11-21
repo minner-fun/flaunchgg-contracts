@@ -29,9 +29,10 @@ import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 /**
  * This hook allows us to create a single sided liquidity position (Plunge Protection) that is
  * placed 1 tick below spot price, using the ETH fees accumulated.
- *
+ * 这个钩子允许我们创建一个单边流动性位置（Plunge Protection），放置在当前价格下方1个tick的位置，使用累积的ETH费用。
  * After each deposit into the BidWall the position is rebalanced to ensure it remains 1 tick
  * below spot. This spot will be determined by the tick value before the triggering swap.
+ * 每次存入BidWall时，位置都会重新平衡，以确保它保持在当前价格下方1个tick。这个当前价格将由触发交换前的tick值确定。
  */
 contract BidWall is AccessControl, Ownable {
 
@@ -46,39 +47,39 @@ contract BidWall is AccessControl, Ownable {
     error CallerIsNotCreator();
     error NotPositionManager();
 
-    /// Emitted when the BidWall is first initialised with ETH
+    /// Emitted when the BidWall is first initialised with ETH 当BidWall第一次初始化时发出事件
     event BidWallInitialized(PoolId indexed _poolId, uint _eth, int24 _tickLower, int24 _tickUpper);
 
-    /// Emitted when a BidWall receives a deposit
+    /// Emitted when a BidWall receives a deposit 当BidWall收到存款时发出事件
     event BidWallDeposit(PoolId indexed _poolId, uint _added, uint _pending);
 
-    /// Emitted when the BidWall is repositioned under an updated tick, or with additional ETH
+    /// Emitted when the BidWall is repositioned under an updated tick, or with additional ETH 当BidWall重新定位到更新的tick，或使用额外的ETH时发出事件
     event BidWallRepositioned(PoolId indexed _poolId, uint _eth, int24 _tickLower, int24 _tickUpper);
 
-    /// Emitted when non-ETH tokens received are transferrer to the memecoin treasury
+    /// Emitted when non-ETH tokens received are transferrer to the memecoin treasury 当非ETH代币收到时，被转移到memecoin Treasury时发出事件
     event BidWallRewardsTransferred(PoolId indexed _poolId, address _recipient, uint _tokens);
 
-    /// Emitted when the BidWall is closed
+    /// Emitted when the BidWall is closed 当BidWall关闭时发出事件
     event BidWallClosed(PoolId indexed _poolId, address _recipient, uint _eth);
 
-    /// Emitted when the BidWall is disabled or enabled
+    /// Emitted when the BidWall is disabled or enabled 当BidWall被禁用或启用时发出事件
     event BidWallDisabledStateUpdated(PoolId indexed _poolId, bool _disabled);
 
-    /// Emitted when the `_swapFeeThreshold` is updated
+    /// Emitted when the `_swapFeeThreshold` is updated 当`_swapFeeThreshold`更新时发出事件
     event FixedSwapFeeThresholdUpdated(uint _newSwapFeeThreshold);
 
-    /// Emitted when the `staleTimeWindow` is updated
+    /// Emitted when the `staleTimeWindow` is updated 当`staleTimeWindow`更新时发出事件
     event StaleTimeWindowUpdated(uint _staleTimeWindow);
 
     /**
-     * Stores the BidWall information for a specific pool.
+     * Stores the BidWall information for a specific pool. 存储BidWall信息用于特定池。
      *
-     * @member disabled If the BidWall is disabled for the pool
-     * @member initialized If the BidWall has been initialized
-     * @member tickLower The current lower tick of the BidWall
-     * @member tickUpper The current upper tick of the BidWall
-     * @member pendingETHFees The amount of ETH fees waiting to be put into the BidWall until threshold is crossed
-     * @member cumulativeSwapFees The total amount of swap fees accumulated for the pool
+     * @member disabled If the BidWall is disabled for the pool 如果BidWall为池禁用
+     * @member initialized If the BidWall has been initialized 如果BidWall已初始化
+     * @member tickLower The current lower tick of the BidWall 当前BidWall的较低tick
+     * @member tickUpper The current upper tick of the BidWall 当前BidWall的较高tick
+     * @member pendingETHFees The amount of ETH fees waiting to be put into the BidWall until threshold is crossed 等待存入BidWall的ETH费用，直到阈值被跨越
+     * @member cumulativeSwapFees The total amount of swap fees accumulated for the pool 池中累积的交换费用总额
      */
     struct PoolInfo {
         bool disabled;
@@ -89,43 +90,43 @@ contract BidWall is AccessControl, Ownable {
         uint cumulativeSwapFees;
     }
 
-    /// Our Uniswap V4 {PoolManager} contract
+    /// Our Uniswap V4 {PoolManager} contract 我们的Uniswap V4 {PoolManager}合同
     IPoolManager public immutable poolManager;
 
-    /// The native token used in the Flaunch protocol
+    /// The native token used in the Flaunch protocol 在Flaunch协议中使用的原生代币
     address public immutable nativeToken;
 
-    /// Timeout period to make a BidWall stale based on last transaction time
+    /// Timeout period to make a BidWall stale based on last transaction time 基于最后交易时间的BidWall过期时间
     uint public staleTimeWindow = 7 days;
 
-    /// Our fixed swap fee threshold
+    /// Our fixed swap fee threshold 我们的固定交换费用阈值
     uint internal _swapFeeThreshold;
 
-    /// Maps our poolId to the `PoolInfo` struct for bidWall data
+    /// Maps our poolId to the `PoolInfo` struct for bidWall data 将我们的poolId映射到`PoolInfo`结构体用于BidWall数据
     mapping (PoolId _poolId => PoolInfo _poolInfo) public poolInfo;
 
-    /// Maps the last transaction time for a pool BidWall
+    /// Maps the last transaction time for a pool BidWall 将池的BidWall的最后交易时间映射到时间戳
     mapping (PoolId _poolId => uint _timestamp) public lastPoolTransaction;
 
     /**
-     * Set up our PoolManager and native ETH token.
-     *
-     * @param _nativeToken The ETH token being used in the {PositionManager}
-     * @param _poolManager The Uniswap V4 {PoolManager}
-     * @param _protocolOwner The address of the protocol owner
+     * Set up our PoolManager and native ETH token. 设置我们的PoolManager和原生ETH代币。
+     * 
+     * @param _nativeToken The ETH token being used in the {PositionManager} 在{PositionManager}中使用的ETH代币
+     * @param _poolManager The Uniswap V4 {PoolManager} Uniswap V4 {PoolManager}
+     * @param _protocolOwner The address of the protocol owner 协议所有者的地址
      */
     constructor (address _nativeToken, address _poolManager, address _protocolOwner) {
         nativeToken = _nativeToken;
         poolManager = IPoolManager(_poolManager);
 
-        // Set our initial swapFeeThreshold and emit an update for the amount
+        // Set our initial swapFeeThreshold and emit an update for the amount 设置我们的初始交换费用阈值并发出更新
         _swapFeeThreshold = 0.1 ether;
         emit FixedSwapFeeThresholdUpdated(0.1 ether);
 
-        // Emit our initial `staleTimeWindow` update
+        // Emit our initial `staleTimeWindow` update 发出我们的初始`staleTimeWindow`更新
         emit StaleTimeWindowUpdated(staleTimeWindow);
 
-        // Set our caller to have the default admin of protocol roles
+        // Set our caller to have the default admin of protocol roles 设置我们的调用者为协议角色的默认管理员
         _grantRole(DEFAULT_ADMIN_ROLE, _protocolOwner);
 
         _initializeOwner(_protocolOwner);
@@ -133,7 +134,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Helper function that checks if a pool's BidWall is enabled or disabled.
-     *
+     * 辅助函数，检查池的BidWall是否启用或禁用。
      * @param _poolId The pool ID to check
      *
      * @return bool Set to `true` if the hook is enabled, `false` if it is disabled
@@ -145,10 +146,10 @@ contract BidWall is AccessControl, Ownable {
     /**
      * Attributes swap fees to the BidWall and calculates if it needs to rebalance
      * the current position.
-     *
+     * 将交换费用归属于BidWall，并计算是否需要重新平衡当前位置。
      * @dev The calling contract should have already checked if this hook is active
      * and ready to receive the swap fees.
-     *
+     * 调用合约应已检查此钩子是否活动并准备好接收交换费用。
      * @param _poolKey The PoolKey to modify the BidWall of
      * @param _ethSwapAmount The amount of ETH swap fees added to BidWall
      * @param _currentTick The current tick of the pool
@@ -160,28 +161,28 @@ contract BidWall is AccessControl, Ownable {
         int24 _currentTick,
         bool _nativeIsZero
     ) public onlyPositionManager {
-        // If we have no fees to swap, then exit early
+        // If we have no fees to swap, then exit early 如果没有要交换的费用，则提前退出
         if (_ethSwapAmount == 0) return;
 
-        // Increase our cumulative and pending fees
+        // Increase our cumulative and pending fees 增加我们的累积和待处理费用
         PoolId poolId = _poolKey.toId();
         PoolInfo storage _poolInfo = poolInfo[poolId];
         _poolInfo.cumulativeSwapFees += _ethSwapAmount;
         _poolInfo.pendingETHFees += _ethSwapAmount;
 
-        // Update the last transaction timestamp
+        // Update the last transaction timestamp 更新最后交易时间戳
         lastPoolTransaction[poolId] = block.timestamp;
 
-        // Send an event to notify that BidWall has received funds
+        // Send an event to notify that BidWall has received funds 发送事件通知BidWall已收到资金
         emit BidWallDeposit(poolId, _ethSwapAmount, _poolInfo.pendingETHFees);
 
         // If we haven't yet crossed a threshold, then we just increase the amount of
-        // pending fees to calculate against next time.
+        // pending fees to calculate against next time. 如果没有跨越阈值，则仅增加待处理费用以计算下次。
         if (_poolInfo.pendingETHFees < _getSwapFeeThreshold(_poolInfo.cumulativeSwapFees)) {
             return;
         }
 
-        // Modify our position to rebalance the liquidity
+        // Modify our position to rebalance the liquidity 修改我们的位置以重新平衡流动性
         _reposition(_poolKey, _poolInfo, _currentTick, _nativeIsZero);
     }
 
@@ -189,7 +190,7 @@ contract BidWall is AccessControl, Ownable {
      * If there has been no transaction in the BidWall for a period of time, then we reposition
      * the liquidity early ahead of the threshold being met. This check takes place in the
      * `beforeSwap` hook so that the provided liquidity is present before the swap.
-     *
+     * 如果BidWall在一段时间内没有交易，则提前重新定位流动性。这个检查发生在`beforeSwap`钩子中，以便在交换之前提供流动性。
      * @param _poolKey The PoolKey to modify the BidWall of
      * @param _currentTick The current tick of the pool
      * @param _nativeIsZero If the native token is `currency0`
@@ -199,26 +200,26 @@ contract BidWall is AccessControl, Ownable {
         int24 _currentTick,
         bool _nativeIsZero
     ) external onlyPositionManager {
-        // If our pool has not fallen stale, then exit early
+        // If our pool has not fallen stale, then exit early 如果池还没有变得陈旧，则提前退出
         PoolId poolId = _poolKey.toId();
         if (lastPoolTransaction[poolId] + staleTimeWindow > block.timestamp) {
             return;
         }
 
         // If the BidWall has no pending fees, then we will have nothing to extract
-        // early, so we don't need to process our reposition.
+        // early, so we don't need to process our reposition. 如果BidWall没有待处理费用，那么我们早期就没有东西可以提取，所以我们不需要处理重新定位。
         PoolInfo storage _poolInfo = poolInfo[poolId];
         if (_poolInfo.pendingETHFees == 0) {
             return;
         }
 
-        // Otherwise, if it is stale then we can exit the liquidity early
+        // Otherwise, if it is stale then we can exit the liquidity early 否则，如果它变得陈旧，那么我们可以提前退出流动性
         _reposition(_poolKey, _poolInfo, _currentTick, _nativeIsZero);
     }
 
     /**
      * Repositions our BidWall liquidity, first extracting the existing position and then creating
-     * a new position.
+     * a new position. 重新定位我们的BidWall流动性，首先提取现有位置，然后创建一个新位置。
      *
      * @param _poolKey The PoolKey to modify the BidWall of
      * @param _poolInfo BidWall information for a specific pool
@@ -304,7 +305,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Retrieves the treasury address for a given memecoin.
-     *
+     * 获取给定memecoin的 treasury 地址。
      * @param _poolKey The {PoolKey} that we are finding the treasury for
      * @param _memecoin The address of the memecoin
      *
@@ -316,7 +317,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Retrieves the creator address for a given memecoin.
-     *
+     * 获取给定memecoin的 creator 地址。
      * @param _poolKey The {PoolKey} that we are finding the creator for
      * @param _memecoin The address of the memecoin
      *
@@ -328,12 +329,12 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Allows the BidWall to be enabled or disabled for the {PoolKey}.
-     *
+     * 允许BidWall为{PoolKey}启用或禁用。
      * If disabled, future swap fees will be transferred directly to the respective
      * {MemecoinTreasury} address instead of the BidWall.
-     *
+     * 如果禁用，未来的交换费用将直接转移到相应的{MemecoinTreasury}地址，而不是BidWall。
      * @dev This can only be called by the creator of the memecoin.
-     *
+     * 调用者只能是memecoin的创建者。
      * @param _key The PoolKey that is being updated
      * @param _disable If the BidWall is being disabled (true) or enabled (false)
      */
@@ -361,7 +362,7 @@ contract BidWall is AccessControl, Ownable {
     /**
      * Allows the memecoin creator to close the BidWall and distribute any fees held in the BidWall
      * to the treasury address.
-     *
+     * 允许memecoin创建者关闭BidWall，并将BidWall中持有的任何费用分配到treasury地址。
      * This call will have been routed in the following way:
      * ```
      * BidWall.disable -> PositionManager.closeBidWall -> PositionManager.unlockCallback -> BidWall.closeBidwall
@@ -426,7 +427,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Retrieves the current position held by the BidWall.
-     *
+     * 获取BidWall当前持有的位置。
      * @param _poolId The `PoolId` to check the {BidWall} position of
      *
      * @return amount0_ The {BidWall} token0 position
@@ -467,7 +468,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Allows the threshold for the swap fee to be updated.
-     *
+     * 允许更新交换费用的阈值。
      * @param swapFeeThreshold The new threshold to set
      */
     function setSwapFeeThreshold(uint swapFeeThreshold) external onlyOwner {
@@ -477,7 +478,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Allows the threshold for a BidWall to be deemed stale to be updated.
-     *
+     * 允许更新BidWall被视为过期的阈值。
      * @param _staleTimeWindow The new stale time window to set
      */
     function setStaleTimeWindow(uint _staleTimeWindow) external onlyOwner {
@@ -488,7 +489,7 @@ contract BidWall is AccessControl, Ownable {
     /**
      * Adds liquidity to our BidWall position. We calculate the tick to be adjacent to the current
      * tick of the pool into a single tick spaced range.
-     *
+     * 添加流动性到我们的BidWall位置。我们计算一个相邻的tick，范围为一个tick间隔。
      * @param _key The {PoolKey} that is being modified
      * @param _nativeIsZero If our native token is `currency0`
      * @param _currentTick The current tick for the pool
@@ -550,7 +551,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Removes liquidity from our BidWall position.
-     *
+     * 从我们的BidWall位置移除流动性。
      * @param _key The {PoolKey} that is being modified
      * @param _nativeIsZero If our native token is `currency0`
      * @param _tickLower The lower tick of our BidWall position
@@ -595,7 +596,7 @@ contract BidWall is AccessControl, Ownable {
      * This function will only be called by other functions via the PositionManager, which will already
      * hold the Uniswap V4 PoolManager key. It is for this reason we can interact openly with the
      * Uniswap V4 protocol without requiring a separate callback.
-     *
+     * 这个函数只能通过PositionManager调用，它已经持有Uniswap V4 PoolManager key。因此，我们可以公开与Uniswap V4协议交互，而不需要单独的回调。
      * @param _poolKey The {PoolKey} that is being modified
      * @param _tickLower The lower tick of our BidWall position
      * @param _tickUpper The upper tick of our BidWall position
@@ -639,9 +640,9 @@ contract BidWall is AccessControl, Ownable {
      * Defines our swap fee thresholds that must be crossed to provide fees. Each time
      * that we hit a set `cumulativeSwapFees` amount, we release a threshold of fees into
      * the bid wall.
-     *
+     * 定义我们的交换费用阈值，必须跨越才能提供费用。每次我们达到一个设置的`cumulativeSwapFees`数量时，我们释放一个阈值的费用到BidWall。
      * For this fixed threshold, this will just return the value set in `setSwapFeeThreshold`.
-     *
+     * 对于这个固定的阈值，这只会返回在`setSwapFeeThreshold`中设置的值。
      * @return uint The swap fee threshold
      */
     function _getSwapFeeThreshold(uint) internal virtual view returns (uint) {
@@ -650,7 +651,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Override to return true to make `_initializeOwner` prevent double-initialization.
-     *
+     * 重写以返回true，使`_initializeOwner`防止双重初始化。
      * @return bool Set to `true` to prevent owner being reinitialized.
      */
     function _guardInitializeOwner() internal pure override virtual returns (bool) {
@@ -659,7 +660,8 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Ensures that only a {PositionManager} can call the function.
-     */
+     * 确保只有{PositionManager}可以调用函数。
+     */ 
     modifier onlyPositionManager {
         if (!hasRole(ProtocolRoles.POSITION_MANAGER, msg.sender)) revert NotPositionManager();
         _;
