@@ -20,8 +20,9 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
  * Takes fees from the tokens within it and then routes claimable balance into the BidWall
  * of a defined Flaunch token's PoolKey. We are required to use `unlockCallback` against
  * the Uniswap V4 {PoolManager} to deposit the fees into the BidWall contract.
- *
- * @dev Anyone is able to trigger the claim for the manager itself.
+ * 从代币中提取费用，然后路由可领取的余额进入定义的Flaunch代币的BidWall。我们需要使用`unlockCallback`
+ * 针对Uniswap V4 {PoolManager}将费用存入BidWall合约。
+ * @dev Anyone is able to trigger the claim for the manager itself. 任何人都可以触发管理器的claim。
  */
 contract BuyBackManager is FeeSplitManager, IUnlockCallback {
 

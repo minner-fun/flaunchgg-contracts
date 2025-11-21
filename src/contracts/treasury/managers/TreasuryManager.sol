@@ -89,13 +89,13 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Once the contract has been initialized, subsequent tokens should be sent via this function.
-     *
+     * 一旦合约被初始化，后续的代币应该通过这个函数发送。
      * @param _flaunchToken The FlaunchToken being depositted
      * @param _creator The creator of the FlaunchToken
      * @param _data Additional deposit data for the manager
      */
     function deposit(FlaunchToken calldata _flaunchToken, address _creator, bytes calldata _data) public {
-        // Check if the manager has been initialized
+        // Check if the manager has been initialized 检查管理器是否已初始化
         if (!initialized) revert NotInitialized();
 
         // Validate the Flaunch contract
