@@ -3,16 +3,16 @@ pragma solidity ^0.8.26;
 
 import {AccessControl} from '@openzeppelin/contracts/access/AccessControl.sol';
 
-import {BeforeSwapDelta, toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol';
-import {BalanceDelta, toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {LiquidityAmounts} from '@uniswap/v4-core/test/utils/LiquidityAmounts.sol';
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BeforeSwapDelta, toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol'; // 用于存储交换前的delta
+import {BalanceDelta, toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol'; // 用于存储交换后的delta
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol'; // 用于存储货币
+import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol'; // 用于存储全数学
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol'; // 用于存储池管理器
+import {LiquidityAmounts} from '@uniswap/v4-core/test/utils/LiquidityAmounts.sol'; // 用于存储流动性数量
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol'; // 用于存储池id
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol'; // 用于存储池键
+import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol'; // 用于存储安全转换
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol'; // 用于存储tick数学
 
 import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
@@ -398,7 +398,7 @@ contract FairLaunch is AccessControl {
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(_tick);
 
         // Calculate `quoteAmount` with better precision if it doesn't overflow when multiplied
-        // by itself.
+        // by itself. 如果它不会溢出当它乘以自身时。
         if (sqrtPriceX96 <= type(uint128).max) {
             uint ratioX192 = uint(sqrtPriceX96) * sqrtPriceX96;
             quoteAmount_ = _baseToken < _quoteToken
