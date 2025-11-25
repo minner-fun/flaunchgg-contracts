@@ -10,6 +10,7 @@ import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFacto
 
 /**
  * Allows only whitelisted creators to deposit tokens into the group.
+ * 只允许白名单创建者存入代币到组。
  */
 contract WhitelistedPermissions is IManagerPermissions {
 

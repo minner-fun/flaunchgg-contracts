@@ -18,6 +18,8 @@ import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
 
 
 /**
+ * 就三个方法，initialize、executeAction、claimFees。初始化，执行动作，领取费用。执行动作，类似与工厂方法。
+ * 通过控制传给执行动作的参数，来控制执行的动作。
  * Allows approved actions to be executed by the `PoolCreator` for their specific pool, using
  * tokens in their {MemecoinTreasury}.
  * 允许批准的操作由`PoolCreator`执行，使用他们的{MemecoinTreasury}中的代币。
@@ -60,14 +62,14 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
 
     /**
      * Executes an approved {ITreasuryAction}.
-     * 执行批准的{ITreasuryAction}。
+     * 执行批准的{ITreasuryAction}。 就是在执行某些动作
      * @dev Only to `PoolCreator` can make this call, otherwise reverted with `Unauthorized`
      *
      * @param _action The {ITreasuryAction} address to execute
      * @param _data Additional data that the {ITreasuryAction} may require
      */
     function executeAction(address _action, bytes memory _data) public nonReentrant {
-        // Ensure the action is approved
+        // Ensure the action is approved 确保操作被批准
         if (!actionManager.approvedActions(_action)) revert ActionNotApproved();
 
         // Make sure the caller is the owner of the corresponding ERC721
@@ -77,18 +79,19 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
         IERC20 token0 = IERC20(Currency.unwrap(poolKey.currency0));
         IERC20 token1 = IERC20(Currency.unwrap(poolKey.currency1));
 
-        // Approve all tokens to be used before execution
+        // Approve all tokens to be used before execution 在执行前批准所有代币
         token0.approve(_action, type(uint).max);
         token1.approve(_action, type(uint).max);
 
         // Claim fees before executing, keeping as fleth to ensure full treasury balances
+        // 在执行前领取费用，保持为fleth以确保完整的资金库余额
         claimFees();
 
-        // Call the execute function on the action contract
-        ITreasuryAction(_action).execute(poolKey, _data);
+        // Call the execute function on the action contract 调用操作合约的execute函数
+        ITreasuryAction(_action).execute(poolKey, _data);  // 调用所有行为的execute方法
         emit ActionExecuted(_action, poolKey, _data);
 
-        // Unapprove all tokens after execution
+        // Unapprove all tokens after execution 在执行后撤销所有代币的批准
         token0.approve(_action, 0);
         token1.approve(_action, 0);
     }

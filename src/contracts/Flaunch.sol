@@ -46,7 +46,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Stores related memecoin contract implementation addresses.
-     *
+     * 存储相关的memecoin合约实现地址。
      * @member memecoin The ERC20 {Memecoin} address
      * @member memecoinTreasury The {MemecoinTreasury} address
      */
@@ -57,7 +57,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Stores the metadata for a memecoin for bridging.
-     *
+     * 存储memecoin的元数据用于跨链桥接。
      * @member name The name of the memecoin
      * @member symbol The symbol of the memecoin
      * @member tokenUri The token URI for the memecoin
@@ -69,37 +69,46 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
     }
 
     /// The L2 to L2 cross domain messenger predeploy to handle message passing
+    /// L2 to L2跨域消息传递预部署处理消息传递
     IL2ToL2CrossDomainMessenger internal messenger = IL2ToL2CrossDomainMessenger(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
 
     /// The maximum amount of tokens that can be attributed to the Fair Launch
+    /// 公平启动的最大代币数量
     uint public constant MAX_FAIR_LAUNCH_TOKENS = TokenSupply.INITIAL_SUPPLY;
 
     /// The maximum value of a creator's fee allocation
+    /// 创建者的最大费用分配
     uint public constant MAX_CREATOR_ALLOCATION = 100_00;
 
     /// The maximum duration of a flaunch schedule
+    /// 公平启动的最大持续时间
     uint public constant MAX_SCHEDULE_DURATION = 30 days;
 
     /// The maximum amount of time to allow for a bridging finalization before allowing a retry
+    /// 最大桥接完成时间，允许重试
     uint public constant MAX_BRIDGING_WINDOW = 1 hours;
 
     /// Our basic token information
+    /// 我们的基本token信息
     string internal _name = 'Flaunch Revenue Streams';
     string internal _symbol = 'FLAUNCH';
-
+    /// 基础URI，表示元数据
     /// The base URI to represent the metadata
     string public baseURI;
 
     /// Stores the next tokenId that will be minted. This can be used as an indication of how
     /// many tokens currently exist in the protocol.
+    /// 下一个tokenId，表示协议中当前存在的token数量
     uint public nextTokenId = 1;
 
     /// The Flaunch {PositionManager} contract
+    /// Flaunch {PositionManager}合同
     PositionManager public positionManager;
 
     /// Our token implementations that will be deployed when a new token is flaunched
-    address public memecoinImplementation;
-    address public memecoinTreasuryImplementation;
+    /// 我们的token实现，当新的token被flaunched时部署
+    address public memecoinImplementation;           // memecoin的模板合约
+    address public memecoinTreasuryImplementation;    // memecoin金库的模板合约
 
     /// Maps `TokenInfo` for each token ID
     mapping (uint _tokenId => TokenInfo _tokenInfo) internal tokenInfo;
@@ -107,7 +116,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
     /// Maps a {Memecoin} ERC20 address to it's token ID
     mapping (address _memecoin => uint _tokenId) public tokenId;
 
-    /// Maps our ERC20 bridging statuses
+    /// Maps our ERC20 bridging statuses 映射我们的ERC20桥接状态
     mapping (uint _tokenId => mapping (uint _chainId => uint _startedAt)) public bridgingStarted;
     mapping (uint _tokenId => mapping (uint _chainId => bool _finalized)) public bridgingFinalized;
 
@@ -129,7 +138,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
      * Adds the {PositionManager} and {MemecoinTreasury} implementation addresses required to
      * actually flaunch tokens, converting the contract from a satellite contract into a fully
      * fledged Flaunch protocol implementation.
-     *
+     * 添加{PositionManager}和{MemecoinTreasury}实现地址，实际flaunch token，将合约从卫星合约转换为完整的Flaunch协议实现。
      * @param _positionManager The Flaunch {PositionManager} 
      * @param _memecoinTreasuryImplementation The {MemecoinTreasury} implementation address   金库实现地址
      */
@@ -150,44 +159,44 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
         address payable memecoinTreasury_,
         uint tokenId_
     ) {
-        // Check if the flaunch timestamp surpasses the max schedule duration
+        // Check if the flaunch timestamp surpasses the max schedule duration 检查发行时间是否超过最大调度时长
         if (_params.flaunchAt > block.timestamp + MAX_SCHEDULE_DURATION) revert InvalidFlaunchSchedule();
 
-        // Ensure that the initial supply falls within an accepted range
+        // Ensure that the initial supply falls within an accepted range 确保初始供应量在可接受的范围内
         if (_params.initialTokenFairLaunch > MAX_FAIR_LAUNCH_TOKENS) revert InvalidInitialSupply(_params.initialTokenFairLaunch);
 
-        // Check that user isn't trying to premine too many tokens
+        // Check that user isn't trying to premine too many tokens 检查用户是否试图预挖太多代币
         if (_params.premineAmount > _params.initialTokenFairLaunch) revert PremineExceedsInitialAmount(_params.premineAmount, _params.initialTokenFairLaunch);
 
-        // A creator cannot set their allocation above a threshold
+        // A creator cannot set their allocation above a threshold 创建者不能设置他们的分配超过一个阈值
         if (_params.creatorFeeAllocation > MAX_CREATOR_ALLOCATION) revert CreatorFeeAllocationInvalid(_params.creatorFeeAllocation, MAX_CREATOR_ALLOCATION);
 
-        // Store the current token ID and increment the next token ID
+        // Store the current token ID and increment the next token ID 存储当前tokenId，并递增下一个tokenId
         tokenId_ = nextTokenId;
         unchecked { nextTokenId++; }
 
-        // Mint ownership token to the creator
+        // Mint ownership token to the creator 铸造所有权token给创建者
         _mint(_params.creator, tokenId_);
 
-        // Deploy the memecoin
+        // Deploy the memecoin 部署memecoin
         memecoin_ = LibClone.cloneDeterministic(memecoinImplementation, bytes32(tokenId_));
 
-        // Store the token ID
+        // Store the token ID 存储tokenId
         tokenId[memecoin_] = tokenId_;
 
-        // Initialize the memecoin with the metadata
+        // Initialize the memecoin with the metadata 用元数据初始化memecoin
         IMemecoin _memecoin = IMemecoin(memecoin_);
         _memecoin.initialize(_params.name, _params.symbol, _params.tokenUri);
 
-        // Deploy the memecoin treasury
+        // Deploy the memecoin treasury 部署memecoin金库
         memecoinTreasury_ = payable(
             LibClone.cloneDeterministic(memecoinTreasuryImplementation, bytes32(tokenId_))
         );
 
-        // Store the token info
+        // Store the token info 存储token信息
         tokenInfo[tokenId_] = TokenInfo(memecoin_, memecoinTreasury_);
 
-        // Mint our initial supply to the {PositionManager}
+        // Mint our initial supply to the {PositionManager} 铸造我们的初始供应到{PositionManager}
         _memecoin.mint(address(positionManager), TokenSupply.INITIAL_SUPPLY);
     }
 
@@ -210,7 +219,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Allows a contract owner to update the base URI for the creator ERC721 tokens.
-     * 
+     * 允许合约所有者更新创建者ERC721 token的基础URI。
      * @param _baseURI The new base URI
      */
     function setBaseURI(string memory _baseURI) external onlyOwner {
@@ -220,7 +229,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Allows the contract owner to update the memecoin implementation address.
-     * 
+     * 允许合约所有者更新memecoin实现地址。
      * @param _memecoinImplementation The new memecoin implementation address
      */
     function setMemecoinImplementation(address _memecoinImplementation) external onlyOwner {
@@ -230,7 +239,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Allows the contract owner to update the memecoin treasury implementation address.
-     * 
+     * 允许合约所有者更新memecoin金库实现地址。
      * @param _memecoinTreasuryImplementation The new memecoin treasury implementation address
      */
     function setMemecoinTreasuryImplementation(address _memecoinTreasuryImplementation) external onlyOwner {
@@ -240,6 +249,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Returns the ERC721 name.
+     * 返回ERC721名称。
      */
     function name() public view override returns (string memory) {
         return _name;
@@ -247,6 +257,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Returns the ERC721 symbol.
+     * 返回ERC721符号。
      */
     function symbol() public view override returns (string memory) {
         return _symbol;
@@ -264,12 +275,12 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
         // If we are ahead of our tracked tokenIds, then revert
         if (_tokenId == 0 || _tokenId >= nextTokenId) revert TokenDoesNotExist();
 
-        // If the base URI is empty, return the memecoin token URI
+        // If the base URI is empty, return the memecoin token URI 如果基础URI为空，返回memecoin token URI
         if (bytes(baseURI).length == 0) {
             return IMemecoin(tokenInfo[_tokenId].memecoin).tokenURI();
         }
 
-        // Otherwise, concatenate the base URI and the token ID
+        // Otherwise, concatenate the base URI and the token ID 否则，拼接基础URI和tokenId
         return LibString.concat(baseURI, LibString.toString(_tokenId));
     }
 

@@ -13,6 +13,10 @@
 
 ---
 
+## 自我理解
+MemecoinTreasury.sol 提供了一个执行动作的入口，可以调用所有符合Action接口的动作合约
+
+
 ## MemecoinTreasury 核心概念
 
 ### 什么是 MemecoinTreasury（代币资金库）？

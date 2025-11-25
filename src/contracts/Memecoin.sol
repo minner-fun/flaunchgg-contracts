@@ -141,7 +141,8 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
 
     /**
      * Returns the name of the token.
-     */ 返回token的名称。
+     * 返回token的名称。
+     */ 
     function name() public view override(ERC20Upgradeable, IMemecoin) returns (string memory) {
         return _name;
     }
