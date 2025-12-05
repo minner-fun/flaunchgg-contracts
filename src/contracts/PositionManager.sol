@@ -423,7 +423,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
      * @param _hookData Arbitrary data handed into the PoolManager by the swapper to be be passed on to the hook 交换者传递给PoolManager的任意数据，将被传递给钩子
      *
      * @return selector_ The function selector for the hook 钩子的函数选择器
-     * @return beforeSwapDelta_ The hook's delta in specified and unspecified currencies. Positive: the hook is owed/took currency, negative: the hook owes/sent currency
+     * @return beforeSwapDelta_ The hook's delta in specified and unspecified currencies. Positive: the hook is owed/took currency, negative: the hook owes/sent currency 钩子的delta在指定和未指定货币中。正数：钩子欠/拿货币，负数：钩子欠/发送货币
      * @return swapFee_ The percentage fee applied to our swap
      */
     function beforeSwap(
