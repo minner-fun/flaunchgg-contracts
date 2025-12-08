@@ -445,7 +445,8 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         {
             // If set, get the timestamp that the pool is scheduled to flaunch 如果设置，获取池计划启动的时间戳
             PoolId poolId = _key.toId();
-            uint _flaunchesAt = flaunchesAt[poolId];
+            uint _flaunchesAt = flaunchesAt[poolId];  // 获取池的启动时间戳
+            // 预挖相关，就是池子的创建者可以在创建池子的时候，设置预挖数量，然后优先购买到代币
             if (_flaunchesAt != 0) {
                 // If we have a schedule set for the token, then we need to make an additional
                 // check to see if a premine is set, and if it's valid. The validity of a premine
@@ -455,7 +456,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
                 // 如果池有计划启动，我们需要进行额外的检查，看看是否设置了预挖，并且如果它有效。
                 // 预挖的有效性确保我们在同一个区块，并且指定的数量是相同的。
                 // 我们不能检查调用者是否与`_sender`相同，因为它是被混淆的，被认为是交换合同。
-                int premineAmount = _tload(PoolId.unwrap(poolId));
+                int premineAmount = _tload(PoolId.unwrap(poolId));  // 获取池的预挖数量
                 if (premineAmount != 0 && _params.amountSpecified == premineAmount) {
                     emit PoolPremine(poolId, premineAmount);
                 } else {
@@ -483,8 +484,8 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
              */
 
             PoolId poolId = _key.toId();
-            if (_tload(PoolId.unwrap(poolId)) == 0 && !fairLaunch.inFairLaunchWindow(poolId)) {
-                uint unsoldSupply = fairLaunchInfo.supply;
+            if (_tload(PoolId.unwrap(poolId)) == 0 && !fairLaunch.inFairLaunchWindow(poolId)) { // 不是预挖，并且已经结束
+                uint unsoldSupply = fairLaunchInfo.supply; // 没有卖完的token数量
                 
                 // closes the fair launch position, putting remaining memecoin supply into the liquidity pool
                 // minus the unsold fair launch supply, which is burned
