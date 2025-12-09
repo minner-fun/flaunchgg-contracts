@@ -1,16 +1,19 @@
 # 1、瞬态存储 PositionManager.sol
 跟预挖相关
-        if (_params.premineAmount != 0) {
-            int premineAmount = _params.premineAmount.toInt256();
-            assembly { tstore(poolId, premineAmount) }                     // 瞬态存储，用于存储预挖数量
-        }
+if (_params.premineAmount != 0) {
+    int premineAmount = _params.premineAmount.toInt256();
+    assembly { tstore(poolId, premineAmount) }                     // 瞬态存储，用于存储预挖数量
+}
 
 ## tload 读取瞬态存储
     function _tload(bytes32 _key) internal view returns (int value_) {
         assembly { value_ := tload(_key) }
     }
 
-
+```solidity
+tload(p)   == transientStorage[p]
+tstore(p, v)  ==  transientStorage[p] := v
+```
 
 
 # 2、sqrtPriceX96

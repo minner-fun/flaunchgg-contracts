@@ -169,6 +169,7 @@ contract FlaunchTest is Deployers {
         feeEscrow = new FeeEscrow(address(flETH), address(indexer));
 
         // Deploy our Locker to a specific address that is valid for our hooks configuration
+        // 部署PositionManagerMock合约
         deployCodeTo('PositionManagerMock.sol', abi.encode(
             address(WETH),
             address(poolManager),
