@@ -423,7 +423,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
      * @param _hookData Arbitrary data handed into the PoolManager by the swapper to be be passed on to the hook 交换者传递给PoolManager的任意数据，将被传递给钩子
      *
      * @return selector_ The function selector for the hook 钩子的函数选择器
-     * @return beforeSwapDelta_ The hook's delta in specified and unspecified currencies. Positive: the hook is owed/took currency, negative: the hook owes/sent currency
+     * @return beforeSwapDelta_ The hook's delta in specified and unspecified currencies. Positive: the hook is owed/took currency, negative: the hook owes/sent currency 钩子的delta在指定和未指定货币中。正数：钩子欠/拿货币，负数：钩子欠/发送货币
      * @return swapFee_ The percentage fee applied to our swap
      */
     function beforeSwap(
@@ -445,7 +445,8 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         {
             // If set, get the timestamp that the pool is scheduled to flaunch 如果设置，获取池计划启动的时间戳
             PoolId poolId = _key.toId();
-            uint _flaunchesAt = flaunchesAt[poolId];
+            uint _flaunchesAt = flaunchesAt[poolId];  // 获取池的启动时间戳
+            // 预挖相关，就是池子的创建者可以在创建池子的时候，设置预挖数量，然后优先购买到代币
             if (_flaunchesAt != 0) {
                 // If we have a schedule set for the token, then we need to make an additional
                 // check to see if a premine is set, and if it's valid. The validity of a premine
@@ -455,7 +456,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
                 // 如果池有计划启动，我们需要进行额外的检查，看看是否设置了预挖，并且如果它有效。
                 // 预挖的有效性确保我们在同一个区块，并且指定的数量是相同的。
                 // 我们不能检查调用者是否与`_sender`相同，因为它是被混淆的，被认为是交换合同。
-                int premineAmount = _tload(PoolId.unwrap(poolId));
+                int premineAmount = _tload(PoolId.unwrap(poolId));  // 获取池的预挖数量
                 if (premineAmount != 0 && _params.amountSpecified == premineAmount) {
                     emit PoolPremine(poolId, premineAmount);
                 } else {
@@ -483,8 +484,8 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
              */
 
             PoolId poolId = _key.toId();
-            if (_tload(PoolId.unwrap(poolId)) == 0 && !fairLaunch.inFairLaunchWindow(poolId)) {
-                uint unsoldSupply = fairLaunchInfo.supply;
+            if (_tload(PoolId.unwrap(poolId)) == 0 && !fairLaunch.inFairLaunchWindow(poolId)) { // 不是预挖，并且已经结束
+                uint unsoldSupply = fairLaunchInfo.supply; // 没有卖完的token数量
                 
                 // closes the fair launch position, putting remaining memecoin supply into the liquidity pool
                 // minus the unsold fair launch supply, which is burned
@@ -940,9 +941,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         bytes calldata _hookData
     ) internal returns (uint swapFee_) {
         // Determine the swap fee currency based on swap parameters
+        // 根据swap参数确定费用货币
         Currency swapFeeCurrency = _params.amountSpecified < 0 == _params.zeroForOne ? _key.currency1 : _key.currency0;
 
         // Capture our swap fees amount
+        // 捕获交换费用
         swapFee_ = _captureSwapFees({
             _poolManager: poolManager,
             _key: _key,
@@ -954,11 +957,13 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         });
 
         // If we have no swap fees, then we have nothing to process
+        // 如果没有交换费用，则没有需要处理的内容
         if (swapFee_ == 0) {
             return swapFee_;
         }
 
         // Check if we have a referrer set and send them the currency directly
+        // 检查是否设置了推荐人，并直接发送代币给他们
         uint referrerFee = _distributeReferrerFees({
             _key: _key,
             _swapFeeCurrency: swapFeeCurrency,
@@ -968,8 +973,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         // Deposit the remaining fees against our pool to be either distributed to
         // others, or placed into the Internal Swap Pool to be converted into an ETH
-        // equivalent token. We don't reduce the amount by referrer fees as we still
-        // need to claim this from the PoolManager.
+        // equivalent token.  
+        // 将剩余费用存入我们的池子，要么分配给其他人，要么放入内部交换池子，转换为ETH等价的token。
+        // We don't reduce the amount by referrer fees as we still
+        // need to claim this from the PoolManager. 
+        // 我们不需要减少推荐人费用，因为我们仍然需要从PoolManager中提取这部分费用。
         _depositFees(
             _key,
             Currency.unwrap(swapFeeCurrency) == nativeToken ? swapFee_ - referrerFee : 0,
@@ -1173,7 +1181,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Maps our swap fee to the expected event emit format.
-     * 我们需要能够设置(未指定)token为amount0 / amount1，用于预期的事件emit格式。
+     * 将我们的交换费用映射到预期的事件emit格式。
      * @param _params The `SwapParams` used to capture the delta
      * @param _key_fee0 The tstore key for the token0 fee amount
      * @param _key_fee1 The tstore key for the token1 fee amount

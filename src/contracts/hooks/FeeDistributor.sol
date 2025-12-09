@@ -163,10 +163,10 @@ abstract contract FeeDistributor is Ownable {
      * @param _poolManager The Uniswap V4 {PoolManager}
      * @param _key The key for the pool being swapped against
      * @param _params The swap parameters called in the swap
-     * @param _feeCalculator The fee calculator to use for calculations
-     * @param _swapFeeCurrency The currency that the fee will be paid in
-     * @param _swapAmount The amount of the swap to take fees from
-     * @param _feeExemption The optional fee exemption that can overwrite
+     * @param _feeCalculator The fee calculator to use for calculations 费用计算器
+     * @param _swapFeeCurrency The currency that the fee will be paid in 费用支付的货币
+     * @param _swapAmount The amount of the swap to take fees from 交换金额
+     * @param _feeExemption The optional fee exemption that can overwrite 可选的费用免除，可以覆盖
      *
      * @return swapFee_ The amount of fees taken for the swap
      */

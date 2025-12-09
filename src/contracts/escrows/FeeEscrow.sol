@@ -15,7 +15,8 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 
 /**
  * Escrow contract that receives fees from multiple PositionManagers, that allows the recipient
- * to withdraw them in a single transaction.
+ * to withdraw them in a single transaction. 
+ * 收取费用的合约，允许接收者在一个交易中提取它们。
  */
 contract FeeEscrow is Ownable {
 
@@ -23,29 +24,29 @@ contract FeeEscrow is Ownable {
     error PoolIdNotIndexed();
     error RecipientZeroAddress();
 
-    /// Emitted when fees are added to a payee
+    /// Emitted when fees are added to a payee 收取费用的事件
     event Deposit(PoolId indexed _poolId, address _payee, address _token, uint _amount);
 
-    /// Emitted when fees are withdrawn to a payee
+    /// Emitted when fees are withdrawn to a payee 提取费用的事件
     event Withdrawal(address _sender, address _recipient, address _token, uint _amount);
     
-    /// The native token address
+    /// The native token address 原生代币地址
     address public immutable nativeToken;
 
-    /// The {IndexerSubscriber} subscriber
+    /// The {IndexerSubscriber} subscriber 索引器订阅者
     IndexerSubscriber public indexer;
 
-    /// Maps a user to an ETH equivalent token balance available in escrow
+    /// Maps a user to an ETH equivalent token balance available in escrow 映射用户到ETH等价的代币余额
     mapping (address _recipient => uint _amount) public balances;
 
-    /// Maps the total fees that a PoolId has accrued
+    /// Maps the total fees that a PoolId has accrued 映射池id到累计费用
     mapping (PoolId _poolId => uint _amount) public totalFeesAllocated;
 
     /**
-     * Constructor to initialize the PoolSwap contract address.
-     *
-     * @param _nativeToken The native token used by the Flaunch protocol
-     * @param _indexer The {IndexerSubscriber} contract address
+     * Constructor to initialize the PoolSwap contract address. 
+     * 构造函数初始化PoolSwap合约地址。
+     * @param _nativeToken The native token used by the Flaunch protocol 原生代币地址
+     * @param _indexer The {IndexerSubscriber} contract address 索引器合约地址
      */
     constructor (address _nativeToken, address _indexer) {
         nativeToken = _nativeToken;
@@ -56,25 +57,25 @@ contract FeeEscrow is Ownable {
 
     /**
      * Allows a deposit to be made against a user. The amount is stored within the
-     * escrow contract to be claimed later.
-     *
-     * @param _poolId The PoolId that the deposit came from
-     * @param _recipient The recipient of the transferred token
-     * @param _amount The amount of the token to be transferred
+     * escrow contract to be claimed later. 
+     * 允许对用户进行存款。金额存储在escrow合约中，稍后可以提取。
+     * @param _poolId The PoolId that the deposit came from 存款来源的池id
+     * @param _recipient The recipient of the transferred token 接收者地址
+     * @param _amount The amount of the token to be transferred 转账数量
      */
     function allocateFees(PoolId _poolId, address _recipient, uint _amount) external {
-        // If we don't have fees to allocate, exit early
+        // If we don't have fees to allocate, exit early 如果没有费用要分配，则退出
         if (_amount == 0) return;
 
-        // Ensure we aren't trying to allocate fees to a zero address
+        // Ensure we aren't trying to allocate fees to a zero address 确保我们不是试图分配费用到零地址
         if (_recipient == address(0)) revert RecipientZeroAddress();
 
-        // Increase the balance available for the recipient to claim
+        // Increase the balance available for the recipient to claim 增加接收者可提取的余额
         balances[_recipient] += _amount;
 
         // Increase the fee tracking for the PoolId, only if the recipient matches the PoolId
-        // that has also been passed in. This will prevent users from being misallocated and
-        // external contracts that depend on this figure from being misinformed.
+        // that has also been passed in. This will prevent users from being misallocated and 增加池id的累计费用，只有接收者与池id匹配时才增加
+        // external contracts that depend on this figure from being misinformed. 防止用户被错误分配，外部合约因错误信息而受到影响。
         (address flaunch,,, uint tokenId) = indexer.poolIndex(_poolId);
         if (tokenId != 0 && IERC721(flaunch).ownerOf(tokenId) == _recipient) {
             totalFeesAllocated[_poolId] += _amount;
