@@ -47,3 +47,16 @@ validTick来着TickFinder 库。用于将任意tick值调整为符合tickSpacing
 
 # beforeSwap的机制
 BeforeSwapDelta的记录表示，再钩子里已经处理了多少代币，poolManager再处理剩下的
+
+# _settleDelta方法进行转账
+方法的内部实现,没看明白
+```solidity
+if (_delta.amount0() < 0) {
+    _poolKey.currency0.settle(poolManager, address(this), uint(-int(_delta.amount0())), false);
+} else if (_delta.amount0() > 0) {
+    poolManager.take(_poolKey.currency0, address(this), uint(int(_delta.amount0())));
+}
+```
+
+# 顿悟
+我悟了，这uniswap，flaunch，无非就是变着法子计算一个代币等于多少另外的代币，然后扣除一点费用，然后给考虑给谁。总之就是这些，swap，fee

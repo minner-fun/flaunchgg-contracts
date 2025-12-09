@@ -941,9 +941,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         bytes calldata _hookData
     ) internal returns (uint swapFee_) {
         // Determine the swap fee currency based on swap parameters
+        // 根据swap参数确定费用货币
         Currency swapFeeCurrency = _params.amountSpecified < 0 == _params.zeroForOne ? _key.currency1 : _key.currency0;
 
         // Capture our swap fees amount
+        // 捕获交换费用
         swapFee_ = _captureSwapFees({
             _poolManager: poolManager,
             _key: _key,
@@ -955,11 +957,13 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         });
 
         // If we have no swap fees, then we have nothing to process
+        // 如果没有交换费用，则没有需要处理的内容
         if (swapFee_ == 0) {
             return swapFee_;
         }
 
         // Check if we have a referrer set and send them the currency directly
+        // 检查是否设置了推荐人，并直接发送代币给他们
         uint referrerFee = _distributeReferrerFees({
             _key: _key,
             _swapFeeCurrency: swapFeeCurrency,
@@ -969,8 +973,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         // Deposit the remaining fees against our pool to be either distributed to
         // others, or placed into the Internal Swap Pool to be converted into an ETH
-        // equivalent token. We don't reduce the amount by referrer fees as we still
-        // need to claim this from the PoolManager.
+        // equivalent token.  
+        // 将剩余费用存入我们的池子，要么分配给其他人，要么放入内部交换池子，转换为ETH等价的token。
+        // We don't reduce the amount by referrer fees as we still
+        // need to claim this from the PoolManager. 
+        // 我们不需要减少推荐人费用，因为我们仍然需要从PoolManager中提取这部分费用。
         _depositFees(
             _key,
             Currency.unwrap(swapFeeCurrency) == nativeToken ? swapFee_ - referrerFee : 0,
@@ -1174,7 +1181,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Maps our swap fee to the expected event emit format.
-     * 我们需要能够设置(未指定)token为amount0 / amount1，用于预期的事件emit格式。
+     * 将我们的交换费用映射到预期的事件emit格式。
      * @param _params The `SwapParams` used to capture the delta
      * @param _key_fee0 The tstore key for the token0 fee amount
      * @param _key_fee1 The tstore key for the token1 fee amount
