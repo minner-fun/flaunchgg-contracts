@@ -185,6 +185,7 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
 
         // Handle case where the token has been burned. This is wrapped in a try/catch as we don't
         // want to revert if the token has a zero address owner (the default ERC721 logic).
+        // flaunch是nft，ownerOf方法返回nft的owner地址
         try flaunch.ownerOf(tokenId) returns (address owner) {
             creator_ = owner;
         } catch {}
@@ -247,6 +248,7 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
         super._afterTokenTransfer(from, to, amount);
 
         // Auto self-delegation if the recipient hasn't delegated yet
+        // 如果接收者没有委托，则自动委托给自己
         if (to != address(0) && delegates(to) == address(0)) {
             _delegate(to, to);
         }
