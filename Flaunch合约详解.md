@@ -15,7 +15,14 @@
 ---
 
 ## 自我理解
-在创建Flaunch和的时候，构造函数要需要传入memecoin的模版合约，其中金库合约也是一样，需要传入一个模板合约，然后使用了LibClone库里的方法进行create2方式的部署
+部署好基本的memecoin合约与金库合约，使用LibClone.cloneDeterministic方法，进行最小代理方式的部署，这里可以节省gas   
+
+
+剩下一些查询方法。meme基础信息的设置方法   
+跨链桥相关的方法，先不研究   
+
+## todo
+对于LibClone.cloneDeterministic方法，的原理与研究做一个小demo放到github，要弄明白这种代理方法到底是如何实现gas的节省的。
 
 ## Flaunch 核心概念
 

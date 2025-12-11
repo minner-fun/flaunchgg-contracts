@@ -123,9 +123,9 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * References the contract addresses for the Flaunch protocol.
-     *
-     * @param _memecoinImplementation The {Memecoin} implementation address
-     * @param _baseURI The default baseUri for the ERC721
+     * 引用Flaunch协议的合约地址。
+     * @param _memecoinImplementation The {Memecoin} implementation address memecoin实现地址
+     * @param _baseURI The default baseUri for the ERC721 ERC721的默认基础URI
      */
     constructor (address _memecoinImplementation, string memory _baseURI) {  // 初始化Flaunch合约，设置memecoin实现地址和基础URI
         memecoinImplementation = _memecoinImplementation;
@@ -173,7 +173,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
         // Store the current token ID and increment the next token ID 存储当前tokenId，并递增下一个tokenId
         tokenId_ = nextTokenId;
-        unchecked { nextTokenId++; }
+        unchecked { nextTokenId++; }  
 
         // Mint ownership token to the creator 铸造所有权token给创建者
         _mint(_params.creator, tokenId_);
@@ -430,6 +430,8 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Modifier to restrict a function to only be a cross-domain callback into this contract.
+     * 限制函数只能被跨域回调到这个合约。
+     * 和桥相关的，先不管
      */
     modifier onlyCrossDomainCallback() {
         if (msg.sender != address(messenger)) revert CallerNotL2ToL2CrossDomainMessenger();
