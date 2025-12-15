@@ -118,7 +118,8 @@ contract FairLaunch is AccessControl {
 
     /**
      * Creates an initial fair launch position.
-     * 创建一个初始公平启动位置。 创建了一个fairlaunch
+     * 创建一个初始公平启动位置。 创建了一个fairlaunch, 其实这里并没有真正的操作pool去创建了位置，现在只是一个虚拟位置
+     * 只是在_fairLaunchInfo 映射中添加了对应的信息，就表示创建了position。等fairlaunch阶段结束才会创建真正的position
      * @param _poolId The ID for the pool being initialized
      * @param _initialTokenFairLaunch The amount of tokens to add as single sided fair launch liquidity
      */
@@ -162,7 +163,10 @@ contract FairLaunch is AccessControl {
      * Closes the FairLaunch position and recreates the position as a wide range position immediately
      * above the tick for our memecoin. This position is comprised of tokens not allocated to the
      * Fair Launch. Any unsold tokens from the Fair Launch will be burned.
-     * 关闭公平启动位置，并立即重新创建一个位置，作为我们memecoin上方的一个宽范围位置。
+     * 关闭公平启动位置，创建两个真实的position，都是单边position。
+     * token0，tokne1与eth 和meme的对应关系至关重要。uni官方始终用 p = y/x的价格来表示tick。token0画到x轴
+     * 1、eth postion，上方还是下方取决于tokne的排序。原则是添加最窄的区间。只提供eth。
+     * 2、剩余tokne。燃烧掉fairlaunch期间未售出的。然后剩下的部分，添加到一个宽区间，敞口到meme价格的正无穷方向。
      * 这个位置由未分配给公平启动的代币组成。公平启动未售出的代币将被销毁。
      * @param _poolKey The PoolKey we are closing the FairLaunch position of 我们关闭公平启动位置的池键
      * @param _tokenFees The amount of token fees that need to remain in the {PositionManager} 需要保留在{PositionManager}中的代币手续费数量
@@ -182,7 +186,8 @@ contract FairLaunch is AccessControl {
         int24 tickLower;
         int24 tickUpper;
 
-        if (_nativeIsZero) {
+        // uni 内部，使用p = y/x, 并且token0 在x轴，因为token0，token1的排序是根据地址大小排的。所有eth就有可能排在0，或者1.
+        if (_nativeIsZero) { // eth 排在0的情况
             // ETH position  ETH位置 
             tickLower = (info.initialTick + 1).validTick(false);
             tickUpper = tickLower + TickFinder.TICK_SPACING;
@@ -193,8 +198,8 @@ contract FairLaunch is AccessControl {
             tickLower = TickFinder.MIN_TICK;
             tickUpper = (info.initialTick - 1).validTick(true);
             _createImmutablePosition(_poolKey, tickLower, tickUpper, _poolKey.currency1.balanceOf(msg.sender) - _tokenFees - info.supply, false);
-        } else {
-            // ETH position
+        } else { // eth 排在1的情况，eth在纵轴，p=e/x  表示单个x的价格（用eth表示），所以这样就有了一套tick，对于这样的tick，使用下面的方法
+            // ETH position  ETH位置
             tickUpper = (info.initialTick - 1).validTick(true);
             tickLower = tickUpper - TickFinder.TICK_SPACING;
             _createImmutablePosition(_poolKey, tickLower, tickUpper, info.revenue, false);
@@ -355,8 +360,9 @@ contract FairLaunch is AccessControl {
     ) internal {
         // Calculate the liquidity delta based on the tick range and token amount
         // 根据tick范围和代币数量计算流动性增量
+        // 计算方法有一套算法，还没有研究
         uint128 liquidityDelta = _tokenIsZero ? LiquidityAmounts.getLiquidityForAmount0({
-            sqrtPriceAX96: TickMath.getSqrtPriceAtTick(_tickLower),
+            sqrtPriceAX96: TickMath.getSqrtPriceAtTick(_tickLower),// sqrtPriceAX96 表示变量名
             sqrtPriceBX96: TickMath.getSqrtPriceAtTick(_tickUpper),
             amount0: _tokens
         }) : LiquidityAmounts.getLiquidityForAmount1({
@@ -365,11 +371,23 @@ contract FairLaunch is AccessControl {
             amount1: _tokens
         });
 
+        // 对于跨越价格的区间，双边流动性的计算
+        // uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmounts({
+        //     sqrtPriceX96: getCurrentSqrtPrice(),  // 当前价格
+        //     sqrtPriceAX96: TickMath.getSqrtPriceAtTick(tickLower),
+        //     sqrtPriceBX96: TickMath.getSqrtPriceAtTick(tickUpper),
+        //     amount0: amount0Desired,  // 需要两种代币
+        //     amount1: amount1Desired   // 都要提供
+        // });
+
         // If we have no liquidity, then exit before creating the position which would revert
         // 如果没有流动性，则退出，避免创建位置时会失败
         if (liquidityDelta == 0) return;
 
         // Create our single-sided position 创建我们的单边位置
+        // 其实，创建流动性的语句，始终都是这一个，
+        // 就是正常的流动性的liquidityDelta的计算方式不同
+        // 并且，正常流动性的delta.amount0,1将都会是负数。表示都需要
         (BalanceDelta delta,) = poolManager.modifyLiquidity({
             key: _poolKey,
             params: IPoolManager.ModifyLiquidityParams({
