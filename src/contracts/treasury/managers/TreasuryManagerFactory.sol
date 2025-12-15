@@ -15,6 +15,7 @@ import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFacto
 
 /**
  * Allows the contract owner to manage approved {ITreasuryAction} contracts.
+ * 允许合约所有者管理批准的{ITreasuryAction}合约。
  */
 contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownable {
 
@@ -34,7 +35,7 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
 
     /**
      * Sets the contract owner.
-     *
+     * 设置合约所有者。
      * @dev This contract should be created in the {PositionManager} constructor call.
      */
     constructor (address _protocolOwner, address _feeEscrow) {
@@ -48,22 +49,23 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
 
     /**
      * Deploys an approved manager implementation.
-     *
+     * 部署一个批准的管理器实现。
      * @param _managerImplementation The address of the approved implementation
      *
      * @return manager_ The freshly deployed {TreasuryManager} contract address
      */
     function deployManager(address _managerImplementation) public returns (address payable manager_) {
-        // Ensure that the implementation is approved
+        // Ensure that the implementation is approved 确保实现被批准
         if (!approvedManagerImplementation[_managerImplementation]) {
             revert UnknownManagerImplemention();
         }
 
-        // Deploy a new implementation of the manager and return the address
+        // Deploy a new implementation of the manager and return the address 部署一个新的管理器实现，并返回地址
         manager_ = payable(LibClone.clone(_managerImplementation));
 
         // Store the implementation for the manager. This allows us to both lookup the
         // implementation type for a manager, and also to validate that it's legit.
+        // 存储管理器的实现，允许我们查找管理器的实现类型，并验证它是否合法。
         managerImplementation[manager_] = _managerImplementation;
         emit ManagerDeployed(manager_, _managerImplementation);
     }
@@ -84,18 +86,18 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
     ) public returns (
         address payable manager_
     ) {
-        // Deploy our manager implementation
+        // Deploy our manager implementation 部署我们的管理器实现
         manager_ = deployManager(_managerImplementation);
 
-        // Initialize the manager with the flaunched ERC721
+        // Initialize the manager with the flaunched ERC721 用flaunched ERC721初始化管理器
         ITreasuryManager(manager_).initialize(_owner, _data);
     }
 
     /**
      * Approves a manager implementation.
-     *
+     * 批准一个管理器实现。
      * @dev This will not revert if the implementation is already approved
-     *
+     * 如果实现已经被批准，则不会 revert
      * @param _managerImplementation The implementation to approve
      */
     function approveManager(address _managerImplementation) public onlyOwner {
@@ -105,7 +107,7 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
 
     /**
      * Remove a manager implementation from approval.
-     *
+     * 移除一个管理器实现的批准。
      * @dev This will revert if the contract is no already approved
      *
      * @param _managerImplementation The implementation to unapprove
@@ -121,7 +123,7 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
 
     /**
      * Override to return true to make `_initializeOwner` prevent double-initialization.
-     *
+     * 重写以返回true，使`_initializeOwner`防止双重初始化。
      * @return bool Set to `true` to prevent owner being reinitialized.
      */
     function _guardInitializeOwner() internal pure override returns (bool) {

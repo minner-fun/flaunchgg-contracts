@@ -17,6 +17,7 @@ import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
 /**
  * Acts as a middleware for revenue claims, allowing external protocols to build on top of Flaunch
  * and be able to have more granular control over the revenue yielded.
+ * 作为收入索赔的中间件，允许外部协议构建在Flaunch之上，并能够对产生的收入进行更细粒度的控制。
  */
 abstract contract TreasuryManager is ITreasuryManager {
 
@@ -59,7 +60,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Sets up the contract with the initial required contract addresses.
-     *
+     * 设置合约的初始所需合约地址。
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      */
     constructor (address _treasuryManagerFactory, address _feeEscrowRegistry) {
@@ -69,7 +70,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Initialize the manager contract.
-     *
+     * 
      * @param _owner The address to have ownership over the tokens
      * @param _data Additional manager initialization data
      */
@@ -98,18 +99,19 @@ abstract contract TreasuryManager is ITreasuryManager {
         // Check if the manager has been initialized 检查管理器是否已初始化
         if (!initialized) revert NotInitialized();
 
-        // Validate the Flaunch contract
+        // Validate the Flaunch contract 验证Flaunch合约
         if (!_isValidFlaunchContract(address(_flaunchToken.flaunch))) {
             revert FlaunchContractNotValid();
         }
 
-        // Validate that the token can be deposited into by the caller
+        // Validate that the token can be deposited into by the caller 验证代币是否可以被调用者存入
         if (!isValidCreator(msg.sender, _data)) {
             revert InvalidCreator();
         }
 
         // Transfer the token from the holder of the `FlaunchToken` to the contract. This will allow for approved tokens to
         // or tokens held by the caller to be deposited.
+        // 将代币从`FlaunchToken`的持有者转移到合约。这将允许批准的代币或调用者持有的代币被存入。
         _flaunchToken.flaunch.transferFrom({
             from: _flaunchToken.flaunch.ownerOf(_flaunchToken.tokenId),
             to: address(this),
@@ -124,7 +126,7 @@ abstract contract TreasuryManager is ITreasuryManager {
     /**
      * An internal initialization function that is overwritten by the managers that extend
      * this contract.
-     *
+     * 一个内部初始化函数，被扩展的合约覆盖。
      * @param _data Additional data bytes that can be unpacked
      */
     function _initialize(address _owner, bytes calldata _data) internal virtual {
@@ -134,7 +136,7 @@ abstract contract TreasuryManager is ITreasuryManager {
     /**
      * An internal deposit function that is overwritten by the managers that extend this
      * contract.
-     *
+     * 一个内部存款函数，被扩展的合约覆盖。
      * @param _flaunchToken The token to deposit
      * @param _creator The creator of the FlaunchToken
      * @param _data Additional data bytes that can be unpacked
@@ -145,7 +147,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Rescues the ERC721, extracting it from the manager and transferring it to a recipient.
-     *
+     * 从管理器中提取ERC721，并将其转移到接收者。
      * @dev Only the owner can make this call.
      *
      * @param _flaunchToken The token to rescue
@@ -175,7 +177,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Transfers ownership of the contract to a new account (`newOwner`).
-     *
+     * 转让合约所有权到新账户(`newOwner`)。
      * @dev Can only be called by the current owner.
      *
      * @param _newManagerOwner The new address that will become the owner
@@ -188,7 +190,7 @@ abstract contract TreasuryManager is ITreasuryManager {
     /**
      * Checks if the specified address is a valid creator and can deposit tokens into the
      * treasury manager.
-     *
+     * 检查指定地址是否是有效的创建者，并且可以存入代币到资金库管理器。
      * @param _creator The address to check
      * @param _data Additional data bytes that can be unpacked
      *
@@ -210,7 +212,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Sets the deposit permissions contract for the treasury manager.
-     *
+     * 设置存款权限合约用于资金库管理器。
      * @dev Only the manager owner can call this function.
      *
      * @param _permissions The new deposit permissions contract
@@ -222,7 +224,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Checks if the specified address is a valid Flaunch contract.
-     *
+     * 检查指定地址是否是有效的Flaunch合约。
      * @param _flaunch The address to check
      *
      * @return `true` if the address is a valid Flaunch contract, `false` otherwise
@@ -233,7 +235,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Helper function to find the PoolId for a given FlaunchToken.
-     *
+     * 查找指定FlaunchToken的PoolId。
      * @dev We cannot rely on the Flaunch contract to have the `poolId` function as this was introduced
      * in Flaunch 1.1. For this reason, we must manually apply the same helper function logic to determine it.
      *
@@ -247,7 +249,7 @@ abstract contract TreasuryManager is ITreasuryManager {
 
     /**
      * Withdraws fees from all known sources.
-     *
+     * 
      * @param _recipient The recipient of the fees
      * @param _unwrap If we want to unwrap the balance from flETH into ETH
      */

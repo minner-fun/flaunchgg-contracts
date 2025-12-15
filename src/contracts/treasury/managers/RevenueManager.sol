@@ -198,7 +198,7 @@ contract RevenueManager is TreasuryManager {
     /**
      * Allows a protocol owner to make a claim, without any additional {FlaunchToken} logic
      * being passed in the parameters.
-     *
+     * 允许协议所有者进行claim，无需传递额外的{FlaunchToken}逻辑参数。
      * @dev This can only be called by the manager owner
      *
      * @return amount_ The amount of ETH claimed from fees
