@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {AccessControl} from '@openzeppelin/contracts/access/AccessControl.sol';
+import {AccessControl} from '@openzeppelin/contracts/access/AccessControl.sol'; // 更细粒度的角色控制
 
 import {BeforeSwapDelta, toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol'; // 用于存储交换前的delta
+// beforeSwapDelta类似于BeforeSwapDelta。都是基于int256类型。然后附件了一些方法
 import {BalanceDelta, toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol'; // 用于存储交换后的delta
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol'; // 用于存储货币
-import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol'; // 用于存储全数学
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol'; // 理解成加强版的address类型，附加了很多自定义的方法
+import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol'; //  FullMath 让你可以安全地计算 (a × b) / c，即使中间结果 a × b 超过 uint256 范围！
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol'; // 用于存储池管理器
 import {LiquidityAmounts} from '@uniswap/v4-core/test/utils/LiquidityAmounts.sol'; // 用于存储流动性数量
 import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol'; // 用于存储池id
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol'; // 用于存储池键
-import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol'; // 用于存储安全转换
+import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol'; // 提供了一系列的安全转换方法，能防止溢出
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol'; // 用于存储tick数学
 
+// CurrencySettler 通过库函数为 Currency 类型添加了 settle() 和 take() 方法，用于与 PoolManager 进行代币结算！
 import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
+// 定义了三个角色
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
-import {TickFinder} from '@flaunch/types/TickFinder.sol';
 // 查找可以用的tick
+import {TickFinder} from '@flaunch/types/TickFinder.sol';
 
 /**
  * Adds functionality to the {PositionManager} that promotes a fair token launch.
@@ -38,7 +41,7 @@ contract FairLaunch is AccessControl {
 
     using CurrencySettler for Currency;
     using PoolIdLibrary for PoolKey;
-    using SafeCast for *;
+    using SafeCast for *; // *表示所有类型。另外SafeCast提供了一些防止溢出的转换方法
     using TickFinder for int24;
 
     error CannotModifyLiquidityDuringFairLaunch();
