@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {console} from 'forge-std/console.sol';
+import {console2} from 'forge-std/console2.sol';
+
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
@@ -74,6 +77,30 @@ contract PositionManagerTest is FlaunchTest {
         assertEq(flaunch.ownerOf(tokenId), address(this));
         assertEq(flaunch.memecoin(tokenId), memecoin);
         assertEq(flaunch.tokenURI(tokenId), 'https://api.flaunch.gg/token/1');
+    }
+
+    function test_CanFlaunch_Single() public flipTokens(false) {
+        uint24 _creatorFeeAllocation = 5000; // 50%
+        
+        address memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams({
+                name: 'Token Name',
+                symbol: 'TOKEN',
+                tokenUri: 'https://flaunch.gg/',
+                initialTokenFairLaunch: supplyShare(50),
+                fairLaunchDuration: 30 minutes,
+                premineAmount: 0,
+                creator: address(this),
+                creatorFeeAllocation: _creatorFeeAllocation,
+                flaunchAt: 0,
+                initialPriceParams: abi.encode(''),
+                feeCalculatorParams: abi.encode(1_000)
+            })
+        );
+
+        console2.log("TokenSupply.INITIAL_SUPPLY", TokenSupply.INITIAL_SUPPLY);
+        assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), address(this));
+        
     }
 
     function test_CanMassFlaunch(uint8 flaunchCount, bool _flipped) public flipTokens(_flipped) {

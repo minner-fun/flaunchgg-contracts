@@ -1,16 +1,19 @@
 # 1、瞬态存储 PositionManager.sol
 跟预挖相关
-        if (_params.premineAmount != 0) {
-            int premineAmount = _params.premineAmount.toInt256();
-            assembly { tstore(poolId, premineAmount) }                     // 瞬态存储，用于存储预挖数量
-        }
+if (_params.premineAmount != 0) {
+    int premineAmount = _params.premineAmount.toInt256();
+    assembly { tstore(poolId, premineAmount) }                     // 瞬态存储，用于存储预挖数量
+}
 
 ## tload 读取瞬态存储
     function _tload(bytes32 _key) internal view returns (int value_) {
         assembly { value_ := tload(_key) }
     }
 
-
+```solidity
+tload(p)   == transientStorage[p]
+tstore(p, v)  ==  transientStorage[p] := v
+```
 
 
 # 2、sqrtPriceX96
@@ -60,3 +63,6 @@ if (_delta.amount0() < 0) {
 
 # 顿悟
 我悟了，这uniswap，flaunch，无非就是变着法子计算一个代币等于多少另外的代币，然后扣除一点费用，然后给考虑给谁。总之就是这些，swap，fee
+
+节省每天 2.5小时。
+工作时间，全身心研究defi

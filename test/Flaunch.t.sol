@@ -10,6 +10,14 @@ contract FlaunchContractTest is FlaunchTest {
         _deployPlatform();
     }
 
+    function test_name_ReturnsCorrectName() public {
+        assertEq(flaunch.name(), 'Flaunch Revenue Streams', 'Name should be Flaunch Revenue Streams');
+    }
+
+    function test_symbol_ReturnsCorrectSymbol() public {
+        assertEq(flaunch.symbol(), 'FLAUNCH', 'Symbol should be FLAUNCH');
+    }
+
     function test_setMemecoinImplementation_RevertsForNonOwner(address _caller) public {
         vm.assume(_caller != flaunch.owner());
 

@@ -17,22 +17,26 @@ library CurrencySettler {
 
     /**
      * Settle (pay) a currency to the PoolManager.
-     *
-     * @param currency Currency to settle
-     * @param manager IPoolManager to settle to
-     * @param payer Address of the payer, the token sender
-     * @param amount Amount to send
-     * @param burn If true, burn the ERC-6909 token, otherwise ERC20-transfer to the PoolManager
+     * 结算（支付）一种货币到池管理器。
+     * @param currency Currency to settle 要结算的货币
+     * @param manager IPoolManager to settle to 要结算到的池管理器
+     * @param payer Address of the payer, the token sender 支付者的地址，代币发送者
+     * @param amount Amount to send 要发送的数量
+     * @param burn If true, burn the ERC-6909 token, otherwise ERC20-transfer to the PoolManager 如果为true，燃烧ERC-6909代币，否则ERC20-transfer到池管理器
      */
     function settle(Currency currency, IPoolManager manager, address payer, uint amount, bool burn) internal {
-        // For native currencies or burns, calling sync is not required
-        // short circuit for ERC-6909 burns to support ERC-6909-wrapped native tokens
+        // For native currencies or burns, calling sync is not required 对于原生货币或燃烧，调用sync是不必要的
+        // short circuit for ERC-6909 burns to support ERC-6909-wrapped native tokens 短路用于ERC-6909燃烧以支持ERC-6909包装的原生代币
         if (burn) {
+            // 燃烧ERC-6909代币
             manager.burn(payer, currency.toId(), amount);
         } else if (currency.isAddressZero()) {
+            // 原生货币结算
             manager.settle{value: amount}();
         } else {
+            // 同步货币
             manager.sync(currency);
+            // 如果支付者不是当前合约，则从支付者转移代币到池管理器
             if (payer != address(this)) {
                 IERC20Minimal(Currency.unwrap(currency)).transferFrom(payer, address(manager), amount);
             } else {

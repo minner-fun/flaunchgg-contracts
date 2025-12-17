@@ -13,12 +13,12 @@ pragma solidity ^0.8.26;
  */
 library TickFinder {
 
-    /// The valid tick spacing value for the pool
+    /// The valid tick spacing value for the pool 池的合法tick间隔值
     int24 internal constant TICK_SPACING = 60;
 
     /// Set our min/max tick range that is valid for the tick spacing
-    int24 internal constant MIN_TICK = -887220;
-    int24 internal constant MAX_TICK = 887220;
+    int24 internal constant MIN_TICK = -887220; // 最小合法tick
+    int24 internal constant MAX_TICK = 887220; // 最大合法tick
 
     /**
      * Helper function to find the nearest valid tick, rounding up or down.
