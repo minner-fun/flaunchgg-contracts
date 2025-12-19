@@ -10,7 +10,7 @@ import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
 
 import {IInitialPrice} from '@flaunch-interfaces/IInitialPrice.sol';
 
-
+import {console2} from 'forge-std/console2.sol';
 /**
  * This contract defines an initial flaunch price by calling on a value already set by the
  * Owner. This is a very simple implementation that sets an ETH : Token price.
@@ -23,7 +23,7 @@ contract InitialPrice is IInitialPrice, Ownable {
     /**
      * The struct of data that should be passed from the flaunching flow to define the
      * desired market cap when a token is flaunching.
-     *
+     * 初始价格参数结构体，用于定义代币发行时的目标市值
      * @member usdcMarketCap The USDC price of the token market cap
      */
     struct InitialPriceParams {
@@ -31,12 +31,14 @@ contract InitialPrice is IInitialPrice, Ownable {
     }
 
     /// Stores the initial `sqrtPriceX96` that will be used for each pool
+    /// 存储每个池的初始`sqrtPriceX96`
     struct InitialSqrtPriceX96 {
         uint160 unflipped;
         uint160 flipped;
     }
 
     /// Our starting token sqrtPriceX96
+    /// 我们的起始token sqrtPriceX96
     InitialSqrtPriceX96 internal _initialSqrtPriceX96;
 
     /// The minimum flaunch price that would incur a flaunching fee
@@ -110,7 +112,7 @@ contract InitialPrice is IInitialPrice, Ownable {
     /**
      * Retrieves the stored `_initialSqrtPriceX96` value and provides the flipped or unflipped
      * `sqrtPriceX96` value.
-     *
+     * 获取存储的`_initialSqrtPriceX96`值，并提供翻转或未翻转的`sqrtPriceX96`值。
      * @param _flipped If the PoolKey currencies are flipped
      *
      * @return uint160 The `sqrtPriceX96` value
@@ -128,6 +130,9 @@ contract InitialPrice is IInitialPrice, Ownable {
      */
     function setSqrtPriceX96(InitialSqrtPriceX96 memory _sqrtPriceX96) public onlyOwner {
         _initialSqrtPriceX96 = _sqrtPriceX96;
+        console2.log("InitialPrice setSqrtPriceX96 called");
+        console2.log("unflipped:", _sqrtPriceX96.unflipped);
+        console2.log("flipped:", _sqrtPriceX96.flipped);
         emit InitialSqrtPriceX96Updated(_sqrtPriceX96.unflipped, _sqrtPriceX96.flipped);
     }
 

@@ -35,7 +35,7 @@ import {IFlaunch} from '@flaunch-interfaces/IFlaunch.sol';
 import {IInitialPrice} from '@flaunch-interfaces/IInitialPrice.sol';
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
-
+import {console2} from 'forge-std/console2.sol';
 /**
  * The PositionManager is a Uniswap V4 hook that controls the user journey from token creation,
  * to fair launch, to ongoing swaps.
@@ -223,14 +223,21 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
      * @return memecoin_ The created ERC20 token address
      */
     function flaunch(FlaunchParams calldata _params) external payable returns (address memecoin_) {
+        console2.log("PositionManager flaunch called");
         uint tokenId;
         address payable memecoinTreasury;
 
         // Flaunch our token 启动我们的token
         (memecoin_, memecoinTreasury, tokenId) = flaunchContract.flaunch(_params);   // tokenId是nft的id
+        console2.log("memecoin address:", memecoin_);
+        console2.log("memecoinTreasury address:", memecoinTreasury);
+        console2.log("tokenId:", tokenId);
+        console2.log("nativeToken:", nativeToken);
+
 
         // Check if our pool currency is flipped
         bool currencyFlipped = nativeToken >= memecoin_;   // 检查我们的池货币是否翻转
+        console2.log("currencyFlipped:", currencyFlipped);
 
         // Create our Uniswap pool and store the pool key for lookups 
         // 创建我们的Uniswap池 并存储池key用于查找
@@ -245,31 +252,17 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         // Initialize the {MemecoinTreasury} with `PoolKey` 初始化MemecoinTreasury与`PoolKey` 
         // 将MemecoinTreasury初始化与`PoolKey`
         MemecoinTreasury(memecoinTreasury).initialize(payable(address(this)), address(actionManager), nativeToken, _poolKey);  // 初始化金库合约
-
+        console2.log("MemecoinTreasury initialized");
+        
         // Set the PoolKey to storage
         _poolKeys[memecoin_] = _poolKey;   // 存储池key
         PoolId poolId = _poolKey.toId();   // 计算池id
-
-        // If we have a non-zero creator fee allocation, then we need to update our creator's
-        // fee allocation. 如果创建者分配了非零的创作者费用，则需要更新创建者的费用分配。
-        if (_params.creatorFeeAllocation != 0) {
-            creatorFee[poolId] = _params.creatorFeeAllocation;
-        }
-
-        // Initialize all fee calculators attached to the pool, along with any custom parameters
-        // 初始化所有附加到池的fee计算器，以及任何自定义参数
-        _initializeFeeCalculators(poolId, _params.feeCalculatorParams);
-
-        // Initialize our memecoin with the sqrtPriceX96
-        // 初始化我们的memecoin与sqrtPriceX96， sqrtPriceX96表示价格的开方后乘以2的96次方
-        int24 initialTick = poolManager.initialize(   // 初始化池，返回初始tick
-            _poolKey,
-            initialPrice.getSqrtPriceX96(msg.sender, currencyFlipped, _params.initialPriceParams)
-        );
+        
 
         // Check if we have an initial flaunching fee, check that enough ETH has been sent
-        // 检查我们是否有初始的flaunching费用，检查是否发送了足够的ETH
-        uint flaunchFee = getFlaunchingFee(_params.initialPriceParams);   // 获取flaunching费用
+        // 检查我们是否有初始的flaunching创建费用，检查是否发送了足够的ETH
+        uint flaunchFee = getFlaunchingFee(_params.initialPriceParams);   // 返回的也是在initialPrice.sol中部署的时候设定的初始值
+        console2.log("flaunchFee:", flaunchFee);
 
         emit PoolCreated({
             _poolId: poolId,
@@ -280,6 +273,14 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             _flaunchFee: flaunchFee,
             _params: _params
         });
+
+
+        //  ---------------处理创作者费用与预挖----------------
+        // If we have a non-zero creator fee allocation, then we need to update our creator's
+        // fee allocation. 如果创建者分配了非零的创作者费用，则需要更新创建者的费用分配。
+        if (_params.creatorFeeAllocation != 0) {
+            creatorFee[poolId] = _params.creatorFeeAllocation;
+        }
 
         /**
          * [PREMINE] If the creator has requested tokens from their initial fair launch
@@ -292,16 +293,36 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             assembly { tstore(poolId, premineAmount) }                     // 瞬态存储，用于存储预挖数量
         }
 
-        /**
-         * [FL] At token creation, x% of token supply is put into a one-sided position.
-         * 在token创建时，x%的token供应被放入一个单边位置。
-         */
 
+        //  ---------------初始化费用计算器----------------
+        // Initialize all fee calculators attached to the pool, along with any custom parameters
+        // 初始化所有附加到池的fee计算器，以及任何自定义参数
+        _initializeFeeCalculators(poolId, _params.feeCalculatorParams);
+
+
+        //  ---------------创建fairLaunch虚拟位置----------------
         // We don't currently require any token approval to create a fair launch position, but
         // when the position closes, the {FairLaunch} contract will supply the {PoolManager}
         // with tokens from this contract.
         // 我们目前不需要任何token批准来创建一个公平启动位置，但是当位置关闭时，{FairLaunch}合同将从这个合同中提供token到{PoolManager}。
         IMemecoin(memecoin_).approve(address(fairLaunch), type(uint).max);   // 授权FairLaunch合约使用代币
+
+
+        // 这个价格是在部署的时候设定的初始值，在initialPrice.sol中
+        uint160 sqrtPriceX96 = initialPrice.getSqrtPriceX96(msg.sender, currencyFlipped, _params.initialPriceParams);
+        console2.log("sqrtPriceX96:", sqrtPriceX96);
+        // Initialize our memecoin with the sqrtPriceX96
+        // 初始化我们的memecoin与sqrtPriceX96， sqrtPriceX96表示价格的开方后乘以2的96次方
+        int24 initialTick = poolManager.initialize(   // 初始化池，返回初始tick
+            _poolKey,
+            sqrtPriceX96
+        );
+        console2.log("initialTick:", initialTick);
+        /**
+         * [FL] At token creation, x% of token supply is put into a one-sided position.
+         * 在token创建时，x%的token供应被放入一个单边位置。
+         */
+
 
         // Regardless of having a fair launch, we need to call `createPosition` as this
         // instantiates our storage struct that is required for when the position is closed
@@ -315,7 +336,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             _initialTokenFairLaunch: _params.initialTokenFairLaunch,
             _fairLaunchDuration: _params.fairLaunchDuration
         });
-
+        console2.log("fairLaunch.createPosition called");
         /**
          * [SCHEDULE] If we have a timestamp in the future, then we set our schedule mapping.
          * 如果我们在未来有一个时间戳，那么我们设置我们的schedule映射。
@@ -330,8 +351,10 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             flaunchesAt[poolId] = block.timestamp;
         }
 
+
+        //   ---------------结束了，结算flaunchFee----------------
         // Refund any additional ETH
-        // 退还任何额外的ETH
+        // 退还任何额外的ETH, 首先手续费会在PM合约中，然后PM把该收的给收的地址，把多与的，再转回给用户
         if (flaunchFee != 0) {
             // Check if we have insufficient value provided
             // 检查我们是否提供了不足的值

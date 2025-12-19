@@ -18,7 +18,7 @@ import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
 import {IFlaunch} from '@flaunch-interfaces/IFlaunch.sol';
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
-
+import {console2} from 'forge-std/console2.sol';
 /**
  * The Flaunch ERC721 NFT that is created when a new position is by the {PositionManager} flaunched.
  * This is used to prove ownership of a pool, so transferring this token would result in a new
@@ -92,6 +92,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
     /// 我们的基本token信息
     string internal _name = 'Flaunch Revenue Streams';
     string internal _symbol = 'FLAUNCH';
+
     /// 基础URI，表示元数据
     /// The base URI to represent the metadata
     string public baseURI;
@@ -159,28 +160,34 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
         address payable memecoinTreasury_,
         uint tokenId_
     ) {
+        console2.log("flaunch called", msg.sender);
         // Check if the flaunch timestamp surpasses the max schedule duration 检查发行时间是否超过最大调度时长
         if (_params.flaunchAt > block.timestamp + MAX_SCHEDULE_DURATION) revert InvalidFlaunchSchedule();
+        console2.log("params.flaunchAt:", _params.flaunchAt, block.timestamp + MAX_SCHEDULE_DURATION);
 
         // Ensure that the initial supply falls within an accepted range 确保初始供应量在可接受的范围内
         if (_params.initialTokenFairLaunch > MAX_FAIR_LAUNCH_TOKENS) revert InvalidInitialSupply(_params.initialTokenFairLaunch);
+        console2.log("initialTokenFairLaunch:", _params.initialTokenFairLaunch, MAX_FAIR_LAUNCH_TOKENS);
 
         // Check that user isn't trying to premine too many tokens 检查用户是否试图预挖太多代币
         if (_params.premineAmount > _params.initialTokenFairLaunch) revert PremineExceedsInitialAmount(_params.premineAmount, _params.initialTokenFairLaunch);
-
+        console2.log("premineAmount > initialTokenFairLaunch", _params.premineAmount, _params.initialTokenFairLaunch);
         // A creator cannot set their allocation above a threshold 创建者不能设置他们的分配超过一个阈值
         if (_params.creatorFeeAllocation > MAX_CREATOR_ALLOCATION) revert CreatorFeeAllocationInvalid(_params.creatorFeeAllocation, MAX_CREATOR_ALLOCATION);
+        console2.log("creatorFeeAllocation:", _params.creatorFeeAllocation, MAX_CREATOR_ALLOCATION);
 
         // Store the current token ID and increment the next token ID 存储当前tokenId，并递增下一个tokenId
         tokenId_ = nextTokenId;
-        unchecked { nextTokenId++; }  
+        unchecked { nextTokenId++; }
+        console2.log("nextTokenId:", nextTokenId);
 
         // Mint ownership token to the creator 铸造所有权token给创建者
         _mint(_params.creator, tokenId_);
+        console2.log("minted tokenId:", _params.creator, tokenId_);
 
-        // Deploy the memecoin 部署memecoin
+        // Deploy the memecoin 部署memecoin 使用tokenId_作为salt，create2的方式部署，可以预测地址
         memecoin_ = LibClone.cloneDeterministic(memecoinImplementation, bytes32(tokenId_));
-
+        console2.log("memecoin address:", memecoin_);
         // Store the token ID 存储tokenId
         tokenId[memecoin_] = tokenId_;
 
@@ -192,12 +199,14 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
         memecoinTreasury_ = payable(
             LibClone.cloneDeterministic(memecoinTreasuryImplementation, bytes32(tokenId_))
         );
+        console2.log("memecoinTreasury address:", memecoinTreasury_);
 
         // Store the token info 存储token信息
         tokenInfo[tokenId_] = TokenInfo(memecoin_, memecoinTreasury_);
-
+        console2.log("tokenInfo:", tokenId_, memecoin_, memecoinTreasury_);
         // Mint our initial supply to the {PositionManager} 铸造我们的初始供应到{PositionManager}
         _memecoin.mint(address(positionManager), TokenSupply.INITIAL_SUPPLY);
+        console2.log("minted initial supply to positionManager:", address(positionManager), TokenSupply.INITIAL_SUPPLY);
     }
 
     /**
