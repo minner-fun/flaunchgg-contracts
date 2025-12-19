@@ -445,6 +445,7 @@ abstract contract FeeDistributor is Ownable {
     function _initializeFeeCalculators(PoolId _poolId, bytes calldata _feeCalculatorParams) internal {
         // Check if we have a fair launch calculator assigned. If we do, then we want to register
         // any custom parameters that have been passed.
+        // 检查是否有一个公平启动计算器分配。如果分配了，那么我们想要注册任何传递的参数。
         IFeeCalculator fairLaunchCalculator = getFeeCalculator(true);
         if (address(fairLaunchCalculator) != address(0)) {
             fairLaunchCalculator.setFlaunchParams(_poolId, _feeCalculatorParams);
@@ -453,6 +454,7 @@ abstract contract FeeDistributor is Ownable {
         // Check if we have a standard calculator assigned that is different to the fair launch
         // calculator. If we do, then we want to register any custom parameters that have been
         // passed.
+        // 检查是否有一个标准计算器分配，与公平启动计算器不同。如果分配了，那么我们想要注册任何传递的参数。
         IFeeCalculator standardCalculator = getFeeCalculator(false);
         if (address(standardCalculator) != address(fairLaunchCalculator)) {
             standardCalculator.setFlaunchParams(_poolId, _feeCalculatorParams);

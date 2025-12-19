@@ -66,8 +66,8 @@ contract FlaunchTest is Deployers {
     /// implication is that the price ratio is inverted compared to what we might expect
     /// intuitively. Therefore, a tick of `6931` confirms that 1 unit of token0 is worth 2
     /// units of token1, despite the name suggesting it might be the other way around.
-    uint160 public constant FL_SQRT_PRICE_1_2 = 112045541949572279837463876454;
-    uint160 public constant FL_SQRT_PRICE_2_1 = 56022770974786139918731938227;
+    uint160 public constant FL_SQRT_PRICE_1_2 = 112045541949572279837463876454; //  √2
+    uint160 public constant FL_SQRT_PRICE_2_1 = 56022770974786139918731938227; //  √0.5
 
     BidWall internal bidWall;
     AnyBidWall internal anyBidWall;
@@ -135,8 +135,8 @@ contract FlaunchTest is Deployers {
 
         // Define our initial token sqrtPriceX96
         InitialPrice.InitialSqrtPriceX96 memory initialSqrtPriceX96 = InitialPrice.InitialSqrtPriceX96({
-            unflipped: FL_SQRT_PRICE_1_2,
-            flipped: FL_SQRT_PRICE_2_1
+            unflipped: FL_SQRT_PRICE_1_2,   // √2 p = 2 token0 = ETH, token1 = token
+            flipped: FL_SQRT_PRICE_2_1   // √0.5 p = 0.5 token0 = token, token1 = ETH
         });
 
         // Deploy our flaunch fee exclusion

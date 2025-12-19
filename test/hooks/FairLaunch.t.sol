@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {console} from 'forge-std/console.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
@@ -114,6 +115,159 @@ contract FairLaunchTest is FlaunchTest {
 
         vm.warp(_timestamp);
         assertFalse(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
+    }
+
+    // /// @dev Debug test to reproduce specific failure case from fuzz testing
+    // function test_Debug_CanRebalancePoolAfterFairLaunch_Flipped() public flipTokens(true) {
+    //     uint _flSupplyPercent = 3;
+    //     uint _flETHBuy = 24959;
+        
+    //     console.log("=== DEBUG TEST: Specific Failure Case ===");
+    //     console.log("Flipped: true");
+    //     console.log("Supply Percent:", _flSupplyPercent);
+    //     console.log("ETH Buy Amount:", _flETHBuy);
+    //     console.log("WETH Address:", address(WETH));
+        
+    //     deal(address(WETH), address(poolManager), 1000e27 ether);
+        
+    //     uint fairLaunchSupply = supplyShare(_flSupplyPercent);
+    //     console.log("Fair Launch Supply:", fairLaunchSupply);
+
+    //     // Create our memecoin
+    //     address memecoin = positionManager.flaunch(
+    //         PositionManager.FlaunchParams(
+    //             'name', 
+    //             'symbol', 
+    //             'https://token.gg/', 
+    //             fairLaunchSupply, 
+    //             FAIR_LAUNCH_DURATION, 
+    //             0, 
+    //             address(this), 
+    //             0, 
+    //             0, 
+    //             abi.encode(''), 
+    //             abi.encode(1_000)
+    //         )
+    //     );
+    //     console.log("Memecoin created:", memecoin);
+        
+    //     // Check pool state
+    //     PoolKey memory key = poolKey(true);
+    //     PoolId pid = poolId(true);
+    //     console.log("Pool ID:", uint256(PoolId.unwrap(pid)));
+    //     console.log("Pool currency0:", Currency.unwrap(key.currency0));
+    //     console.log("Pool currency1:", Currency.unwrap(key.currency1));
+        
+    //     (uint160 sqrtPriceX96, int24 tick,,) = poolManager.getSlot0(pid);
+    //     console.log("Pool sqrtPriceX96:", sqrtPriceX96);
+    //     console.log("Pool tick:", int256(tick));
+        
+    //     // Check if pool is initialized
+    //     if (sqrtPriceX96 == 0) {
+    //         console.log("ERROR: Pool is NOT initialized!");
+    //     } else {
+    //         console.log("Pool is initialized");
+    //     }
+
+    //     // Give tokens and approve for swap
+    //     deal(address(WETH), address(this), 2 ether);
+    //     WETH.approve(address(poolSwap), type(uint).max);
+
+    //     // Action our swap during Fair Launch
+    //     console.log("Attempting swap during Fair Launch...");
+    //     poolSwap.swap(
+    //         key,
+    //         IPoolManager.SwapParams({
+    //             zeroForOne: false, // !flipped = !true = false
+    //             amountSpecified: -int(_flETHBuy),
+    //             sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+    //         })
+    //     );
+    //     console.log("First swap completed");
+        
+    //     // End Fair Launch
+    //     vm.warp(block.timestamp + FAIR_LAUNCH_DURATION + 1);
+    //     assertFalse(fairLaunch.inFairLaunchWindow(pid));
+    //     console.log("Fair Launch ended");
+
+    //     // remaining Fair Launch supply
+    //     FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(pid);
+    //     uint flSupplyToBurn = fairLaunchInfo.supply;
+    //     console.log("Remaining FL supply to burn:", flSupplyToBurn);
+
+    //     // Action our swap after Fair Launch for rebalancing
+    //     console.log("Attempting swap after Fair Launch for rebalancing...");
+    //     poolSwap.swap(
+    //         key,
+    //         IPoolManager.SwapParams({
+    //             zeroForOne: false,
+    //             amountSpecified: -1 ether,
+    //             sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+    //         })
+    //     );
+    //     console.log("Rebalancing swap completed");
+
+    //     // confirm that the unsold memecoin fair launch supply was burned
+    //     uint burnedAmount = IERC20(memecoin).balanceOf(positionManager.BURN_ADDRESS());
+    //     console.log("Burned amount:", burnedAmount);
+    //     assertEq(burnedAmount, flSupplyToBurn, 'Invalid burn amount');
+    // }
+
+    function test_CanRebalancePoolAfterFairLaunch_Single() public flipTokens(true) {
+        bool _flipped = true;
+        uint _flSupplyPercent = 3;
+        uint _flETHBuy = 24959;
+
+        console.log("=== DEBUG TEST: Specific Failure Case ===");
+        console.log("Flipped: true");
+        console.log("Supply Percent:", _flSupplyPercent);
+        console.log("ETH Buy Amount:", _flETHBuy);
+        console.log("WETH Address:", address(WETH));
+
+        deal(address(WETH), address(poolManager), 1000e27 ether);
+        // vm.assume(_flSupplyPercent > 0 && _flSupplyPercent < 69);
+        // vm.assume(_flETHBuy > 0 && _flETHBuy < 1 ether);
+        uint fairLaunchSupply = supplyShare(_flSupplyPercent);
+        console.log("Fair Launch Supply:", fairLaunchSupply);
+
+        // Create our memecoin
+        address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', fairLaunchSupply, FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        console.log("Memecoin created:", memecoin);
+
+        // Give tokens and approve for swap
+        deal(address(WETH), address(this), 2 ether);
+        WETH.approve(address(poolSwap), type(uint).max);
+
+        // Action our swap during Fair Launch
+        poolSwap.swap(
+            poolKey(_flipped),
+            IPoolManager.SwapParams({
+                zeroForOne: !_flipped,
+                amountSpecified: -int(_flETHBuy),
+                sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
+            })
+        );
+        
+        // End Fair Launch
+        vm.warp(block.timestamp + FAIR_LAUNCH_DURATION + 1);
+        assertFalse(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
+
+        // remaining Fair Launch supply
+        FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(poolId(_flipped));
+        uint flSupplyToBurn = fairLaunchInfo.supply;
+
+        // Action our swap after Fair Launch for rebalancing
+        poolSwap.swap(
+            poolKey(_flipped),
+            IPoolManager.SwapParams({
+                zeroForOne: !_flipped,
+                amountSpecified: -1 ether,
+                sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
+            })
+        );
+
+        // confirm that the unsold memecoin fair launch supply was burned
+        assertEq(IERC20(memecoin).balanceOf(positionManager.BURN_ADDRESS()), flSupplyToBurn, 'Invalid burn amount');
     }
 
     function test_CanRebalancePoolAfterFairLaunch(bool _flipped, uint _flSupplyPercent, uint _flETHBuy) public flipTokens(_flipped) {

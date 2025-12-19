@@ -98,7 +98,7 @@ contract PositionManagerTest is FlaunchTest {
             })
         );
 
-        console2.log("TokenSupply.INITIAL_SUPPLY", TokenSupply.INITIAL_SUPPLY);
+        // console2.log("TokenSupply.INITIAL_SUPPLY", TokenSupply.INITIAL_SUPPLY);
         assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), address(this));
         
     }
