@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {console} from 'forge-std/console.sol';
+import {console2} from 'forge-std/console2.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
@@ -218,47 +218,54 @@ contract FairLaunchTest is FlaunchTest {
         uint _flSupplyPercent = 3;
         uint _flETHBuy = 24959;
 
-        console.log("=== DEBUG TEST: Specific Failure Case ===");
-        console.log("Flipped: true");
-        console.log("Supply Percent:", _flSupplyPercent);
-        console.log("ETH Buy Amount:", _flETHBuy);
-        console.log("WETH Address:", address(WETH));
+        console2.log("=== DEBUG TEST: Specific Failure Case ===");
+        console2.log("Flipped: true");
+        console2.log("Supply Percent:", _flSupplyPercent);
+        console2.log("ETH Buy Amount:", _flETHBuy);
+        console2.log("WETH Address:", address(WETH));
 
-        deal(address(WETH), address(poolManager), 1000e27 ether);
+        deal(address(WETH), address(poolManager), 1000e27 ether);  // 作弊码，直接设置poolManager的WETH代币余额为10000e27
         // vm.assume(_flSupplyPercent > 0 && _flSupplyPercent < 69);
         // vm.assume(_flETHBuy > 0 && _flETHBuy < 1 ether);
         uint fairLaunchSupply = supplyShare(_flSupplyPercent);
-        console.log("Fair Launch Supply:", fairLaunchSupply);
-
+        console2.log("Fair Launch Supply:", fairLaunchSupply);
+        // vm.breakpoint("a");  // Checkpoint before creating memecoin
         // Create our memecoin
         address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', fairLaunchSupply, FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
-        console.log("Memecoin created:", memecoin);
+        console2.log("Memecoin created:", memecoin);
+
+        // Get the actual PoolKey for the created memecoin
+        PoolKey memory actualPoolKey = positionManager.poolKey(memecoin);
+        PoolId actualPoolId = actualPoolKey.toId();
+        // console2.log("Actual Pool ID:", PoolId.unwrap(actualPoolId));
 
         // Give tokens and approve for swap
         deal(address(WETH), address(this), 2 ether);
         WETH.approve(address(poolSwap), type(uint).max);
 
+        console2.log("Before swap");
         // Action our swap during Fair Launch
         poolSwap.swap(
-            poolKey(_flipped),
+            actualPoolKey,
             IPoolManager.SwapParams({
                 zeroForOne: !_flipped,
                 amountSpecified: -int(_flETHBuy),
                 sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             })
         );
+        console2.log("After swap");
         
         // End Fair Launch
         vm.warp(block.timestamp + FAIR_LAUNCH_DURATION + 1);
-        assertFalse(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
+        assertFalse(fairLaunch.inFairLaunchWindow(actualPoolId));
 
         // remaining Fair Launch supply
-        FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(poolId(_flipped));
+        FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(actualPoolId);
         uint flSupplyToBurn = fairLaunchInfo.supply;
 
         // Action our swap after Fair Launch for rebalancing
         poolSwap.swap(
-            poolKey(_flipped),
+            actualPoolKey,
             IPoolManager.SwapParams({
                 zeroForOne: !_flipped,
                 amountSpecified: -1 ether,
@@ -278,13 +285,16 @@ contract FairLaunchTest is FlaunchTest {
         // Create our memecoin
         address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(_flSupplyPercent), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
 
+        PoolKey memory actualPoolKey = positionManager.poolKey(memecoin);
+        PoolId actualPoolId = actualPoolKey.toId();
+
         // Give tokens and approve for swap
         deal(address(WETH), address(this), 2 ether);
         WETH.approve(address(poolSwap), type(uint).max);
 
         // Action our swap during Fair Launch
         poolSwap.swap(
-            poolKey(_flipped),
+            actualPoolKey,
             IPoolManager.SwapParams({
                 zeroForOne: !_flipped,
                 amountSpecified: -int(_flETHBuy),
@@ -294,15 +304,15 @@ contract FairLaunchTest is FlaunchTest {
         
         // End Fair Launch
         vm.warp(block.timestamp + FAIR_LAUNCH_DURATION + 1);
-        assertFalse(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
+        assertFalse(fairLaunch.inFairLaunchWindow(actualPoolId));
 
         // remaining Fair Launch supply
-        FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(poolId(_flipped));
+        FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(actualPoolId);
         uint flSupplyToBurn = fairLaunchInfo.supply;
 
         // Action our swap after Fair Launch for rebalancing
         poolSwap.swap(
-            poolKey(_flipped),
+            actualPoolKey,
             IPoolManager.SwapParams({
                 zeroForOne: !_flipped,
                 amountSpecified: -1 ether,
