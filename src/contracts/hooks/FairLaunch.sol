@@ -254,6 +254,7 @@ contract FairLaunch is AccessControl {
         BalanceDelta balanceDelta_,
         FairLaunchInfo memory fairLaunchInfo_
     ) {
+        console2.log("--------------------------------FairLaunch-fillFromPosition--------------------------------");
         PoolId poolId = _poolKey.toId();
         FairLaunchInfo storage info = _fairLaunchInfo[poolId];
 
@@ -271,7 +272,7 @@ contract FairLaunch is AccessControl {
         // If we have a negative amount specified, then we have an ETH amount passed in and want
         // 如果指定了负数金额，那么我们有一个ETH金额传入，想要购买尽可能多的代币。
         // to buy as many tokens as we can for that price.
-        console2.log("FairLaunch fillFromPosition", info.initialTick);
+        console2.log("FairLaunch-fillFromPosition: _amountSpecified", _amountSpecified);
         if (_amountSpecified < 0) {
             ethIn = uint(-_amountSpecified);
             tokensOut = _getQuoteAtTick(
@@ -309,7 +310,7 @@ contract FairLaunch is AccessControl {
         }
         // ---------------------------计算eth和token的数量---------------------------
 
-        console2.log("ethIn", ethIn.toInt128());
+        console2.log("eth    In", ethIn.toInt128());
         console2.log("tokensOut", tokensOut.toInt128());
         // BeforeSwapDelta 高128表示精确的那代币的增量，低128表示不精确的那代币的增量  表示的是那个是精确，那个是非精确的关系
         // https://docs.uniswap.org/contracts/v4/reference/core/types/beforeswapdelta-guide

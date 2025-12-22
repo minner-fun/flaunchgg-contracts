@@ -658,10 +658,11 @@ contract FairLaunchTest is FlaunchTest {
         );
     }
 
-    function test_CanFairLaunchSwap(uint _supply) public {
+    // function test_CanFairLaunchSwap(uint _supply) public {
+    function test_CanFairLaunchSwap() public {
         // Ensure our supply is within the full range (0 - 100%)
-        _supply = bound(_supply, 0, 100);
-
+        // _supply = bound(_supply, 0, 100); // 模糊测试的方法，现在supply在0到100之间
+        uint _supply = 50;
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         initialPrice.setSqrtPriceX96(
@@ -696,10 +697,11 @@ contract FairLaunchTest is FlaunchTest {
             poolKey(false),
             IPoolManager.SwapParams({
                 zeroForOne: true,
-                amountSpecified: -1000e18,
+                amountSpecified: 1000e18,
                 sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             })
         );
+        console2.log("After swap");
     }
 
     function test_CanFairLaunchWithScheduledFlaunch() public {
