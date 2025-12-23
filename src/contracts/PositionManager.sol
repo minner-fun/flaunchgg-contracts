@@ -287,7 +287,6 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
          * allocation, which they can purchase in the same transaction.
          * 如果创建者请求了他们的初始公平启动分配，他们可以在同一交易中购买这些token。
          */
-
         if (_params.premineAmount != 0) {
             int premineAmount = _params.premineAmount.toInt256();
             assembly { tstore(poolId, premineAmount) }                     // 瞬态存储，用于存储预挖数量
@@ -322,7 +321,6 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
          * [FL] At token creation, x% of token supply is put into a one-sided position.
          * 在token创建时，x%的token供应被放入一个单边位置。
          */
-
 
         // Regardless of having a fair launch, we need to call `createPosition` as this
         // instantiates our storage struct that is required for when the position is closed
