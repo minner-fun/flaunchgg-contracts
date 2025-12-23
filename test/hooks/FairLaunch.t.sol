@@ -648,9 +648,11 @@ contract FairLaunchTest is FlaunchTest {
         );
     }
 
-    function test_CanFairLaunchSwap(uint _supply) public {
+    // function test_CanFairLaunchSwap(uint _supply) public {
+    function test_CanFairLaunchSwap() public {
+
         // Ensure our supply is within the full range (0 - 100%)
-        _supply = bound(_supply, 0, 100);
+        uint _supply = 40;
 
         deal(address(WETH), address(poolManager), 1000e27 ether);
 

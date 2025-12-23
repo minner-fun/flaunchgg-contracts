@@ -224,161 +224,211 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
      */
     function flaunch(FlaunchParams calldata _params) external payable returns (address memecoin_) {
         console2.log("PositionManager flaunch called");
-        uint tokenId;
-        address payable memecoinTreasury;
+        
+        // 1. 创建代币、金库和 NFT
+        (memecoin_, address payable memecoinTreasury, uint tokenId) = _createTokenAndTreasury(_params);
+        
+        // 2. 创建并存储 PoolKey
+        (PoolKey memory poolKey, PoolId poolId, bool currencyFlipped) = _createAndStorePoolKey(memecoin_);
+        
+        // 3. 初始化金库
+        _initializeTreasury(memecoinTreasury, poolKey);
+        
+        // 4. 计算并发出池创建事件
+        uint flaunchFee = _emitPoolCreatedEvent(poolId, memecoin_, memecoinTreasury, tokenId, currencyFlipped, _params);
+        
+        // 5. 设置创作者费用和预挖
+        _setupCreatorFeeAndPremine(poolId, _params);
+        
+        // 6. 初始化费用计算器
+        _initializeFeeCalculators(poolId, _params.feeCalculatorParams);
+        
+        // 7. 初始化池和 Fair Launch
+        int24 initialTick = _initializePoolAndFairLaunch(memecoin_, poolKey, poolId, currencyFlipped, _params);
+        
+        // 8. 结算 flaunch 费用
+        _settleFlaunchFee(flaunchFee);
+        
+        // 9. 发出池状态更新事件
+        _emitPoolStateUpdate(poolId, IHooks.afterInitialize.selector, abi.encode(tokenId, _params));
+    }
 
-        // Flaunch our token 启动我们的token
-        (memecoin_, memecoinTreasury, tokenId) = flaunchContract.flaunch(_params);   // tokenId是nft的id
+    // ==================== flaunch 内部方法 ====================
+
+    /**
+     * @notice 创建代币、金库和 NFT
+     * @dev 调用 flaunchContract 创建 ERC20 代币和 ERC721 NFT
+     * @return memecoin_ 创建的代币地址
+     * @return memecoinTreasury_ 创建的金库地址
+     * @return tokenId_ 创建的 NFT ID
+     */
+    function _createTokenAndTreasury(
+        FlaunchParams calldata _params
+    ) internal returns (address memecoin_, address payable memecoinTreasury_, uint tokenId_) {
+        (memecoin_, memecoinTreasury_, tokenId_) = flaunchContract.flaunch(_params);
+        
         console2.log("memecoin address:", memecoin_);
-        console2.log("memecoinTreasury address:", memecoinTreasury);
-        console2.log("tokenId:", tokenId);
+        console2.log("memecoinTreasury address:", memecoinTreasury_);
+        console2.log("tokenId:", tokenId_);
         console2.log("nativeToken:", nativeToken);
+    }
 
-
-        // Check if our pool currency is flipped
-        bool currencyFlipped = nativeToken >= memecoin_;   // 检查我们的池货币是否翻转
-        console2.log("currencyFlipped:", currencyFlipped);
-
-        // Create our Uniswap pool and store the pool key for lookups 
-        // 创建我们的Uniswap池 并存储池key用于查找
-        PoolKey memory _poolKey = PoolKey({
-            currency0: Currency.wrap(!currencyFlipped ? nativeToken : memecoin_),
-            currency1: Currency.wrap(currencyFlipped ? nativeToken : memecoin_),
+    /**
+     * @notice 创建并存储 PoolKey
+     * @dev 根据货币地址大小确定 currency0 和 currency1，创建 PoolKey 并存储
+     * @return poolKey_ 创建的 PoolKey
+     * @return poolId_ 池 ID
+     * @return currencyFlipped_ 货币是否翻转
+     */
+    function _createAndStorePoolKey(
+        address memecoin_
+    ) internal returns (PoolKey memory poolKey_, PoolId poolId_, bool currencyFlipped_) {
+        // 检查货币是否需要翻转（Uniswap 要求 currency0 < currency1）
+        currencyFlipped_ = nativeToken >= memecoin_;
+        console2.log("currencyFlipped:", currencyFlipped_);
+        
+        // 创建 PoolKey
+        poolKey_ = PoolKey({
+            currency0: Currency.wrap(!currencyFlipped_ ? nativeToken : memecoin_),
+            currency1: Currency.wrap(currencyFlipped_ ? nativeToken : memecoin_),
             fee: 0,
             tickSpacing: 60,
             hooks: IHooks(address(this))
         });
+        
+        // 存储 PoolKey
+        _poolKeys[memecoin_] = poolKey_;
+        poolId_ = poolKey_.toId();
+    }
 
-        // Initialize the {MemecoinTreasury} with `PoolKey` 初始化MemecoinTreasury与`PoolKey` 
-        // 将MemecoinTreasury初始化与`PoolKey`
-        MemecoinTreasury(memecoinTreasury).initialize(payable(address(this)), address(actionManager), nativeToken, _poolKey);  // 初始化金库合约
+    /**
+     * @notice 初始化金库合约
+     * @dev 使用 PoolKey 初始化 MemecoinTreasury
+     */
+    function _initializeTreasury(
+        address payable memecoinTreasury_,
+        PoolKey memory poolKey_
+    ) internal {
+        MemecoinTreasury(memecoinTreasury_).initialize(
+            payable(address(this)), 
+            address(actionManager), 
+            nativeToken, 
+            poolKey_
+        );
         console2.log("MemecoinTreasury initialized");
-        
-        // Set the PoolKey to storage
-        _poolKeys[memecoin_] = _poolKey;   // 存储池key
-        PoolId poolId = _poolKey.toId();   // 计算池id
-        
+    }
 
-        // Check if we have an initial flaunching fee, check that enough ETH has been sent
-        // 检查我们是否有初始的flaunching创建费用，检查是否发送了足够的ETH
-        uint flaunchFee = getFlaunchingFee(_params.initialPriceParams);   // 返回的也是在initialPrice.sol中部署的时候设定的初始值
-        console2.log("flaunchFee:", flaunchFee);
-
+    /**
+     * @notice 计算费用并发出池创建事件
+     * @return flaunchFee_ 计算出的 flaunch 费用
+     */
+    function _emitPoolCreatedEvent(
+        PoolId poolId_,
+        address memecoin_,
+        address memecoinTreasury_,
+        uint tokenId_,
+        bool currencyFlipped_,
+        FlaunchParams calldata _params
+    ) internal returns (uint flaunchFee_) {
+        flaunchFee_ = getFlaunchingFee(_params.initialPriceParams);
+        console2.log("flaunchFee:", flaunchFee_);
+        
         emit PoolCreated({
-            _poolId: poolId,
+            _poolId: poolId_,
             _memecoin: memecoin_,
-            _memecoinTreasury: memecoinTreasury,
-            _tokenId: tokenId,
-            _currencyFlipped: currencyFlipped,
-            _flaunchFee: flaunchFee,
+            _memecoinTreasury: memecoinTreasury_,
+            _tokenId: tokenId_,
+            _currencyFlipped: currencyFlipped_,
+            _flaunchFee: flaunchFee_,
             _params: _params
         });
+    }
 
-
-        //  ---------------处理创作者费用与预挖----------------
-        // If we have a non-zero creator fee allocation, then we need to update our creator's
-        // fee allocation. 如果创建者分配了非零的创作者费用，则需要更新创建者的费用分配。
+    /**
+     * @notice 设置创作者费用分配和预挖
+     * @dev 如果设置了创作者费用，则存储；如果有预挖数量，则存入 transient storage
+     */
+    function _setupCreatorFeeAndPremine(
+        PoolId poolId_,
+        FlaunchParams calldata _params
+    ) internal {
+        // 设置创作者费用分配
         if (_params.creatorFeeAllocation != 0) {
-            creatorFee[poolId] = _params.creatorFeeAllocation;
+            creatorFee[poolId_] = _params.creatorFeeAllocation;
         }
-
-        /**
-         * [PREMINE] If the creator has requested tokens from their initial fair launch
-         * allocation, which they can purchase in the same transaction.
-         * 如果创建者请求了他们的初始公平启动分配，他们可以在同一交易中购买这些token。
-         */
-
+        
+        // 设置预挖（使用 transient storage，仅在同一交易内有效）
         if (_params.premineAmount != 0) {
             int premineAmount = _params.premineAmount.toInt256();
-            assembly { tstore(poolId, premineAmount) }                     // 瞬态存储，用于存储预挖数量
+            assembly { tstore(poolId_, premineAmount) }
         }
+    }
 
-
-        //  ---------------初始化费用计算器----------------
-        // Initialize all fee calculators attached to the pool, along with any custom parameters
-        // 初始化所有附加到池的fee计算器，以及任何自定义参数
-        _initializeFeeCalculators(poolId, _params.feeCalculatorParams);
-
-
-        //  ---------------创建fairLaunch虚拟位置----------------
-        // We don't currently require any token approval to create a fair launch position, but
-        // when the position closes, the {FairLaunch} contract will supply the {PoolManager}
-        // with tokens from this contract.
-        // 我们目前不需要任何token批准来创建一个公平启动位置，但是当位置关闭时，{FairLaunch}合同将从这个合同中提供token到{PoolManager}。
-        IMemecoin(memecoin_).approve(address(fairLaunch), type(uint).max);   // 授权FairLaunch合约使用代币
-
-
-        // 这个价格是在部署的时候设定的初始值，在initialPrice.sol中
-        uint160 sqrtPriceX96 = initialPrice.getSqrtPriceX96(msg.sender, currencyFlipped, _params.initialPriceParams);
-        console2.log("sqrtPriceX96:", sqrtPriceX96);
-        // Initialize our memecoin with the sqrtPriceX96
-        // 初始化我们的memecoin与sqrtPriceX96， sqrtPriceX96表示价格的开方后乘以2的96次方
-        int24 initialTick = poolManager.initialize(   // 初始化池，返回初始tick
-            _poolKey,
-            sqrtPriceX96
+    /**
+     * @notice 初始化池和 Fair Launch
+     * @dev 授权 FairLaunch 合约，初始化 Uniswap 池，创建 Fair Launch 位置
+     * @return initialTick_ 初始化后的 tick
+     */
+    function _initializePoolAndFairLaunch(
+        address memecoin_,
+        PoolKey memory poolKey_,
+        PoolId poolId_,
+        bool currencyFlipped_,
+        FlaunchParams calldata _params
+    ) internal returns (int24 initialTick_) {
+        // 授权 FairLaunch 合约使用代币
+        IMemecoin(memecoin_).approve(address(fairLaunch), type(uint).max);
+        
+        // 获取初始价格
+        uint160 sqrtPriceX96 = initialPrice.getSqrtPriceX96(
+            msg.sender, 
+            currencyFlipped_, 
+            _params.initialPriceParams
         );
-        console2.log("initialTick:", initialTick);
-        /**
-         * [FL] At token creation, x% of token supply is put into a one-sided position.
-         * 在token创建时，x%的token供应被放入一个单边位置。
-         */
-
-
-        // Regardless of having a fair launch, we need to call `createPosition` as this
-        // instantiates our storage struct that is required for when the position is closed
-        // and the tokens are moved to a Uniswap V4 liquidity position.
-        // 无论是否有公平启动，我们都需要调用`createPosition`，因为这会实例化我们需要的存储结构，
-        //当位置关闭时，token会被移动到一个Uniswap V4流动性位置。
+        console2.log("sqrtPriceX96:", sqrtPriceX96);
+        
+        // 初始化 Uniswap V4 池
+        initialTick_ = poolManager.initialize(poolKey_, sqrtPriceX96);
+        console2.log("initialTick:", initialTick_);
+        
+        // 创建 Fair Launch 位置
         fairLaunch.createPosition({
-            _poolId: poolId,
-            _initialTick: initialTick,
+            _poolId: poolId_,
+            _initialTick: initialTick_,
             _flaunchesAt: _params.flaunchAt > block.timestamp ? _params.flaunchAt : block.timestamp,
             _initialTokenFairLaunch: _params.initialTokenFairLaunch,
             _fairLaunchDuration: _params.fairLaunchDuration
         });
         console2.log("fairLaunch.createPosition called");
-        /**
-         * [SCHEDULE] If we have a timestamp in the future, then we set our schedule mapping.
-         * 如果我们在未来有一个时间戳，那么我们设置我们的schedule映射。
-         */
-
+        
+        // 设置延迟启动时间戳
         if (_params.flaunchAt > block.timestamp) {
-            flaunchesAt[poolId] = _params.flaunchAt;
-            emit PoolScheduled(poolId, _params.flaunchAt);
+            flaunchesAt[poolId_] = _params.flaunchAt;
+            emit PoolScheduled(poolId_, _params.flaunchAt);
         } else {
-            // If the `flaunchAt` timestamp has already passed, then use the current timestamp
-            // 如果`flaunchAt`时间戳已经过去，那么使用当前时间戳
-            flaunchesAt[poolId] = block.timestamp;
+            flaunchesAt[poolId_] = block.timestamp;
         }
+    }
 
-
-        //   ---------------结束了，结算flaunchFee----------------
-        // Refund any additional ETH
-        // 退还任何额外的ETH, 首先手续费会在PM合约中，然后PM把该收的给收的地址，把多与的，再转回给用户
-        if (flaunchFee != 0) {
-            // Check if we have insufficient value provided
-            // 检查我们是否提供了不足的值
-            if (msg.value < flaunchFee) {
-                revert InsufficientFlaunchFee(msg.value, flaunchFee);
+    /**
+     * @notice 结算 flaunch 费用
+     * @dev 检查费用是否足够，支付给协议，退还多余的 ETH
+     */
+    function _settleFlaunchFee(uint flaunchFee_) internal {
+        if (flaunchFee_ != 0) {
+            // 检查是否有足够的 ETH
+            if (msg.value < flaunchFee_) {
+                revert InsufficientFlaunchFee(msg.value, flaunchFee_);
             }
-
-            // Pay the flaunching fee to our fee recipient
-            // 将flaunching费用支付给我们的fee recipient
-            SafeTransferLib.safeTransferETH(protocolFeeRecipient, flaunchFee);
+            
+            // 支付 flaunch 费用给协议
+            SafeTransferLib.safeTransferETH(protocolFeeRecipient, flaunchFee_);
         }
-
-        // Refund any ETH that was not required
-        // 退还任何不需要的ETH
-        if (msg.value > flaunchFee) {
-            SafeTransferLib.safeTransferETH(msg.sender, msg.value - flaunchFee);
+        
+        // 退还多余的 ETH
+        if (msg.value > flaunchFee_) {
+            SafeTransferLib.safeTransferETH(msg.sender, msg.value - flaunchFee_);
         }
-
-        // After our contract is initialized, we mark our pool as initialized and emit
-        // our state update to notify the UX of current prices, etc. This will include
-        // optional liquidity modifications from the Fair Launch logic.
-        // 在我们的合同被初始化后，我们标记我们的池为初始化，并发出我们的状态更新，通知UX当前的价格等。
-        // 这可能包括公平启动逻辑的可选流动性修改。
-        _emitPoolStateUpdate(poolId, IHooks.afterInitialize.selector, abi.encode(tokenId, _params));
     }
 
     /**
@@ -449,6 +499,10 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
      * @return beforeSwapDelta_ The hook's delta in specified and unspecified currencies. Positive: the hook is owed/took currency, negative: the hook owes/sent currency 钩子的delta在指定和未指定货币中。正数：钩子欠/拿货币，负数：钩子欠/发送货币
      * @return swapFee_ The percentage fee applied to our swap
      */
+    /**
+     * @notice beforeSwap hook - 在交换前执行的检查和处理
+     * @dev 重构后的版本，将逻辑拆分成多个内部方法提高可读性和可维护性
+     */
     function beforeSwap(
         address _sender,
         PoolKey calldata _key,
@@ -459,212 +513,252 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         BeforeSwapDelta beforeSwapDelta_,
         uint24
     ) {
-        /**
-         * [SCHEDULE][PREMINE] Check if the token is scheduled to be flaunched and only
-         * allow a swap to take place if there is a premine call available.
-         * 检查token是否被安排在某个时间点启动，并且只有在有预挖调用可用时才允许交换。
-         */
+        PoolId poolId = _key.toId();
+        
+        // 1. 检查预挖和延迟启动
+        _checkPremineAndFlaunchSchedule(poolId, _params);
+        
+        // 2. 处理 Fair Launch 逻辑
+        beforeSwapDelta_ = _handleFairLaunch(_key, _params, _sender, _hookData);
+        
+        // 3. 清除临时存储（防止预挖被重复触发）
+        _clearStore(poolId);
+        
+        // 4. 处理内部交换
+        beforeSwapDelta_ = _handleInternalSwap(_key, _params, _sender, _hookData, beforeSwapDelta_);
+        
+        // 5. 检查 BidWall
+        _checkBidWall(_key);
+        
+        // 6. 返回选择器
+        selector_ = IHooks.beforeSwap.selector;
+    }
 
-        {
-            // If set, get the timestamp that the pool is scheduled to flaunch 如果设置，获取池计划启动的时间戳
-            PoolId poolId = _key.toId();
-            uint _flaunchesAt = flaunchesAt[poolId];  // 获取池的启动时间戳
-            // 预挖相关，就是池子的创建者可以在创建池子的时候，设置预挖数量，然后优先购买到代币
-            if (_flaunchesAt != 0) {
-                // If we have a schedule set for the token, then we need to make an additional
-                // check to see if a premine is set, and if it's valid. The validity of a premine
-                // ensures that we are in the same block and that the amount specified is the same.
-                // We cannot check that the caller is the same as the `_sender` is obfuscated to
-                // be the swap contract.
-                // 如果池有计划启动，我们需要进行额外的检查，看看是否设置了预挖，并且如果它有效。
-                // 预挖的有效性确保我们在同一个区块，并且指定的数量是相同的。
-                // 我们不能检查调用者是否与`_sender`相同，因为它是被混淆的，被认为是交换合同。
-                int premineAmount = _tload(PoolId.unwrap(poolId));  // 获取池的预挖数量
-                if (premineAmount != 0 && _params.amountSpecified == premineAmount) {
-                    emit PoolPremine(poolId, premineAmount);
-                } else {
-                    // If the timestamp has not yet passed, then we revert
-                    if (_flaunchesAt > block.timestamp) {
-                        revert TokenNotFlaunched(_flaunchesAt);
-                    }
+    // ==================== beforeSwap 内部方法 ====================
 
-                    // Remove the schedule timestamp to prevent future checks
-                    delete flaunchesAt[poolId];
-                }
+    /**
+     * @notice 检查预挖和延迟启动时间戳
+     * @dev 验证池子是否可以交易，以及是否是有效的预挖交易
+     */
+    function _checkPremineAndFlaunchSchedule(
+        PoolId poolId,
+        IPoolManager.SwapParams memory _params
+    ) internal {
+        uint _flaunchesAt = flaunchesAt[poolId];
+        
+        // 如果没有设置启动时间，直接返回
+        if (_flaunchesAt == 0) return;
+        
+        // 检查是否是预挖交易
+        int premineAmount = _tload(PoolId.unwrap(poolId));
+        
+        if (premineAmount != 0 && _params.amountSpecified == premineAmount) {
+            // 有效的预挖交易
+            emit PoolPremine(poolId, premineAmount);
+        } else {
+            // 不是预挖交易，检查时间是否已到
+            if (_flaunchesAt > block.timestamp) {
+                revert TokenNotFlaunched(_flaunchesAt);
             }
+            
+            // 时间已到，删除时间戳限制
+            delete flaunchesAt[poolId];
         }
+    }
 
-        // Check if our fair launch period hasn't ended and already been processed
-        // 检查我们的公平启动期是否没有结束，并且已经处理过。
+    /**
+     * @notice 处理 Fair Launch 相关逻辑
+     * @dev 包括关闭过期位置和处理 Fair Launch 窗口内的交易
+     * @return beforeSwapDelta_ Fair Launch 交换产生的 delta
+     */
+    function _handleFairLaunch(
+        PoolKey calldata _key,
+        IPoolManager.SwapParams memory _params,
+        address _sender,
+        bytes calldata _hookData
+    ) internal returns (BeforeSwapDelta beforeSwapDelta_) {
         FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(_key.toId());
-        if (!fairLaunchInfo.closed) {
-            bool nativeIsZero = nativeToken == Currency.unwrap(_key.currency0);  // 检查我们的原生代币是否是货币0
-
-            /**
-             * [FL] If it's not premine, and the FairLaunch window has ended, but our position is still open, then we
-             * need to close the position.
-             * 如果它不是预挖，并且公平启动窗口已经结束，但我们的位置仍然打开，那么我们需要关闭位置。
-             */
-
-            PoolId poolId = _key.toId();
-            if (_tload(PoolId.unwrap(poolId)) == 0 && !fairLaunch.inFairLaunchWindow(poolId)) { // 不是预挖，并且已经结束
-                uint unsoldSupply = fairLaunchInfo.supply; // 没有卖完的token数量
-                
-                // closes the fair launch position, putting remaining memecoin supply into the liquidity pool
-                // minus the unsold fair launch supply, which is burned
-                // 关闭公平启动位置，将剩余的memecoin供应放入流动性池，减去未售出的公平启动供应，这些供应将被销毁
-                fairLaunch.closePosition({
-                    _poolKey: _key,
-                    _tokenFees: _poolFees[poolId].amount1,   // 代币手续费
-                    _nativeIsZero: nativeIsZero   // 检查我们的原生代币是否是货币0
-                });
-
-                // burn the unsold fair launch supply 销毁未售出的公平启动供应
-                if (unsoldSupply != 0) {
-                    (nativeIsZero ? _key.currency1 : _key.currency0).transfer(BURN_ADDRESS, unsoldSupply);
-                    emit FairLaunchBurn(poolId, unsoldSupply);
-                }
-            }
-            else {
-
-                /**
-                 * [FL] If we are still in the FairLaunch window, then we need to prevent any swaps that
-                 * are specified to sell the {Memecoin}.
-                 * 如果我们在公平启动窗口内，那么我们需要防止任何指定的交换，试图出售{Memecoin}。
-                 */
-
-                if (nativeIsZero != _params.zeroForOne) {
-                    revert FairLaunch.CannotSellTokenDuringFairLaunch();
-                }   // 如果我们的原生代币不是货币0，则抛出错误
-
-                /**
-                 * [FL] We attempt to fill the swap request from our FairLaunch position. If the
-                 * swap parameters surpass the FairLaunch position, or the window has closed since
-                 * the last swap, then this call will also close the position and create our new
-                 * range.
-                 * 我们尝试从我们的公平启动位置填充交换请求。如果交换参数超过了公平启动位置，或者窗口在最后一次交换后已经关闭，那么这个调用也会关闭位置并创建我们的新范围。
-                 */
-
-                // Try to fill from FL at specific tick 
-                // 尝试从公平启动位置填充交换请求，在特定tick
-                BalanceDelta fairLaunchFillDelta;
-                (beforeSwapDelta_, fairLaunchFillDelta, fairLaunchInfo) = fairLaunch.fillFromPosition(_key, _params.amountSpecified, nativeIsZero);
-
-                // Give the tokens to Uniswap V4 so that it can play good-cop and give them to the user
-                // 将代币交给Uniswap V4，以便它可以扮演好警察并将其交给用户
-                _settleDelta(_key, fairLaunchFillDelta); // 就是在这里转的账
-
-                /**
-                 * [FD] We need to determine the amount of fees generated by our fair launch swap to
-                 * capture, rather than sending the full amount to the end user.
-                 * 我们需要确定我们公平启动交换产生的费用，而不是发送全额给最终用户。
-                 */
-                
-                // 记账，只是记录一下刚才的转账需要多少手续费
-                // We need to capture fees from our internal swap at this point 我们需要在这个点从我们的内部交换中捕获费用
-                uint swapFee = _captureAndDepositFees(_key, _params, _sender, beforeSwapDelta_.getUnspecifiedDelta(), _hookData);
-
-                // Increment our swap 增加我们的交换
-                _captureDelta(_params, TS_FL_AMOUNT0, TS_FL_AMOUNT1, beforeSwapDelta_);
-                _captureDeltaSwapFee(_params, TS_FL_FEE0, TS_FL_FEE1, swapFee);
-
-                // Increase the delta being sent back 增加我们发送回去的delta
-                beforeSwapDelta_ = toBeforeSwapDelta(
-                    beforeSwapDelta_.getSpecifiedDelta(),
-                    beforeSwapDelta_.getUnspecifiedDelta() + swapFee.toInt128()
-                );
-
-                // A FairLaunch transaction will always facilitate purchasing Memecoin with
-                // Native Token. This means that if the `amountSpecified` not negative, then we will
-                // have captured the fee in Native Token and as such we need to reduce the amount of
-                // revenue that we record.
-                // 一个公平启动交易总是会促进用原生代币购买Memecoin。这意味着如果`amountSpecified`不是负数，那么我们就会捕获费用在原生代币中，因此我们需要减少我们记录的收入。
-                if (_params.amountSpecified >= 0 && swapFee != 0) {
-                    fairLaunch.modifyRevenue(poolId, -swapFee.toInt128());
-                }
-
-                // If we have run out of tokens, then we can close the pool
-                // 如果我们用完了代币，那么我们可以关闭池
-                if (fairLaunchInfo.supply == 0) {
-                    fairLaunch.closePosition({
-                        _poolKey: _key,
-                        _tokenFees: _poolFees[poolId].amount1,
-                        _nativeIsZero: nativeIsZero
-                    });
-                }
-            }
+        
+        // 如果 Fair Launch 已关闭，不需要处理
+        if (fairLaunchInfo.closed) {
+            return toBeforeSwapDelta(0, 0);
         }
-
-        /**
-         * [PREMINE] Delete our transient storage data to prevent premines ever being triggered
-         * over multiple swaps. 
-         * 删除我们的临时存储数据，以防止在多个交换中触发预挖。
-         */
-
-        {
-            PoolId poolId = _key.toId();
-            assembly {
-                tstore(poolId, 0)
-            }
+        
+        PoolId poolId = _key.toId();
+        bool nativeIsZero = nativeToken == Currency.unwrap(_key.currency0);
+        
+        // 检查是否需要关闭过期的 Fair Launch
+        if (_shouldCloseFairLaunch(poolId)) {
+            _closeFairLaunchPosition(_key, poolId, fairLaunchInfo, nativeIsZero);
+            return toBeforeSwapDelta(0, 0);
         }
+        
+        // 在 Fair Launch 窗口内处理交易
+        return _processFairLaunchSwap(_key, _params, _sender, _hookData, poolId, nativeIsZero);
+    }
 
-        /**
-         * [ISP] We want to see if we have any token1 fee tokens that we can use to fill the swap
-         * before it hits the Uniswap pool. This prevents the pool from being affected and reduced
-         * gas costs. This also allows us to benefit from the Uniswap routing infrastructure.
-         * 我们想要检查我们是否有任何token1费用token，我们可以用来在它到达Uniswap池之前填充交换。
-         * 这防止了池受到影响和减少gas成本。这也允许我们受益于Uniswap路由基础设施。
-         * This frontruns Uniswap to sell undesired token amounts from our fees into desired tokens
-         * ahead of our fee distribution. This acts as a partial orderbook to remove impact against
-         * our pool.
-         * 这提前运行Uniswap，将我们不需要的token数量从我们的费用中出售到我们想要的token，
-         * 在我们收取费用之前。这作为一个部分订单簿来减少对我们池的影响。
-         */
+    /**
+     * @notice 判断是否应该关闭 Fair Launch 位置
+     * @dev 不是预挖交易 且 Fair Launch 窗口已结束
+     */
+    function _shouldCloseFairLaunch(PoolId poolId) internal view returns (bool) {
+        return _tload(PoolId.unwrap(poolId)) == 0 && !fairLaunch.inFairLaunchWindow(poolId);
+    }
 
-        (uint tokenIn, uint tokenOut) = _internalSwap(poolManager, _key, _params, nativeToken == Currency.unwrap(_key.currency0));
-        if (tokenIn + tokenOut != 0) {
-            // Update our hook delta to reduce the upcoming swap amount to show that we have 
-            // already spent some of the ETH and received some of the underlying ERC20. 更新我们的hook delta，减少即将到来的交换数量，以显示我们已经花费了一些ETH，并收到了一些底层ERC20。
-            BeforeSwapDelta internalBeforeSwapDelta = _params.amountSpecified >= 0
-                ? toBeforeSwapDelta(-tokenOut.toInt128(), tokenIn.toInt128())
-                : toBeforeSwapDelta(tokenIn.toInt128(), -tokenOut.toInt128());
-
-            /**
-             * [FD] We need to determine the amount of fees generated by our internal swap to capture,
-             * rather than sending the full amount to the end user.
-             * 我们需要确定我们内部交换产生的费用，而不是发送全额给最终用户。
-             */
-
-            // We need to capture fees from our internal swap at this point 
-            // 我们需要在这个点从我们的内部交换中捕获费用
-            uint swapFee = _captureAndDepositFees(_key, _params, _sender, internalBeforeSwapDelta.getUnspecifiedDelta(), _hookData);
-
-            // Increment our swap 增加我们的交换
-            _captureDelta(_params, TS_ISP_AMOUNT0, TS_ISP_AMOUNT1, internalBeforeSwapDelta);
-            _captureDeltaSwapFee(_params, TS_ISP_FEE0, TS_ISP_FEE1, swapFee);
-
-            // Increase the delta being sent back 增加我们发送回去的delta
-            beforeSwapDelta_ = toBeforeSwapDelta(
-                beforeSwapDelta_.getSpecifiedDelta() + internalBeforeSwapDelta.getSpecifiedDelta(),
-                beforeSwapDelta_.getUnspecifiedDelta() + internalBeforeSwapDelta.getUnspecifiedDelta() + swapFee.toInt128()
-            );
+    /**
+     * @notice 关闭 Fair Launch 位置并销毁未售出的代币
+     */
+    function _closeFairLaunchPosition(
+        PoolKey calldata _key,
+        PoolId poolId,
+        FairLaunch.FairLaunchInfo memory fairLaunchInfo,
+        bool nativeIsZero
+    ) internal {
+        uint unsoldSupply = fairLaunchInfo.supply;
+        
+        // 关闭公平启动位置
+        fairLaunch.closePosition({
+            _poolKey: _key,
+            _tokenFees: _poolFees[poolId].amount1,
+            _nativeIsZero: nativeIsZero
+        });
+        
+        // 销毁未售出的代币
+        if (unsoldSupply != 0) {
+            (nativeIsZero ? _key.currency1 : _key.currency0).transfer(BURN_ADDRESS, unsoldSupply);
+            emit FairLaunchBurn(poolId, unsoldSupply);
         }
+    }
 
-        // Capture the beforeSwap tick value before actioning our Uniswap swap
-        // 在执行我们的Uniswap交换之前，捕获beforeSwap tick值
-        (, _beforeSwapTick,,) = poolManager.getSlot0(_key.toId());
+    /**
+     * @notice 处理 Fair Launch 窗口内的交换
+     * @dev 验证交易方向、填充订单、计算费用
+     */
+    function _processFairLaunchSwap(
+        PoolKey calldata _key,
+        IPoolManager.SwapParams memory _params,
+        address _sender,
+        bytes calldata _hookData,
+        PoolId poolId,
+        bool nativeIsZero
+    ) internal returns (BeforeSwapDelta beforeSwapDelta_) {
+        // 只允许买入，不允许卖出 memecoin
+        if (nativeIsZero != _params.zeroForOne) {
+            revert FairLaunch.CannotSellTokenDuringFairLaunch();
+        }
+        
+        // 从 Fair Launch 位置填充交换请求
+        BalanceDelta fairLaunchFillDelta;
+        FairLaunch.FairLaunchInfo memory fairLaunchInfo;
+        (beforeSwapDelta_, fairLaunchFillDelta, fairLaunchInfo) = fairLaunch.fillFromPosition(
+            _key, 
+            _params.amountSpecified, 
+            nativeIsZero
+        );
+        
+        // 结算代币转账
+        _settleDelta(_key, fairLaunchFillDelta);
+        
+        // 捕获并处理交易费用
+        uint swapFee = _captureAndDepositFees(
+            _key, 
+            _params, 
+            _sender, 
+            beforeSwapDelta_.getUnspecifiedDelta(), 
+            _hookData
+        );
+        
+        // 记录交换数量和费用
+        _captureDelta(_params, TS_FL_AMOUNT0, TS_FL_AMOUNT1, beforeSwapDelta_);
+        _captureDeltaSwapFee(_params, TS_FL_FEE0, TS_FL_FEE1, swapFee);
+        
+        // 更新返回的 delta（包含费用）
+        beforeSwapDelta_ = toBeforeSwapDelta(
+            beforeSwapDelta_.getSpecifiedDelta(),
+            beforeSwapDelta_.getUnspecifiedDelta() + swapFee.toInt128()
+        );
+        
+        // 调整 Fair Launch 收入（如果费用以原生代币支付）
+        if (_params.amountSpecified >= 0 && swapFee != 0) {
+            fairLaunch.modifyRevenue(poolId, -swapFee.toInt128());
+        }
+        
+        // 如果代币售罄，关闭位置
+        if (fairLaunchInfo.supply == 0) {
+            fairLaunch.closePosition({
+                _poolKey: _key,
+                _tokenFees: _poolFees[poolId].amount1,
+                _nativeIsZero: nativeIsZero
+            });
+        }
+    }
 
-        // Check if the BidWall has become stale, and allow liquidity to be extracted before a
-        // threshold has been built. 检查BidWall是否变得陈旧，并在构建阈值之前允许流动性被提取。
+    /**
+     * @notice 处理内部交换逻辑
+     * @dev 执行内部交换并累加到现有的 beforeSwapDelta
+     */
+    function _handleInternalSwap(
+        PoolKey calldata _key,
+        IPoolManager.SwapParams memory _params,
+        address _sender,
+        bytes calldata _hookData,
+        BeforeSwapDelta beforeSwapDelta_
+    ) internal returns (BeforeSwapDelta) {
+        bool nativeIsZero = nativeToken == Currency.unwrap(_key.currency0);
+        
+        // 执行内部交换
+        (uint tokenIn, uint tokenOut) = _internalSwap(poolManager, _key, _params, nativeIsZero);
+        
+        // 如果没有内部交换，直接返回
+        if (tokenIn + tokenOut == 0) {
+            return beforeSwapDelta_;
+        }
+        
+        // 计算内部交换的 delta
+        BeforeSwapDelta internalBeforeSwapDelta = _params.amountSpecified >= 0
+            ? toBeforeSwapDelta(-tokenOut.toInt128(), tokenIn.toInt128())
+            : toBeforeSwapDelta(tokenIn.toInt128(), -tokenOut.toInt128());
+        
+        // 捕获内部交换的费用
+        uint swapFee = _captureAndDepositFees(
+            _key, 
+            _params, 
+            _sender, 
+            internalBeforeSwapDelta.getUnspecifiedDelta(), 
+            _hookData
+        );
+        
+        // 记录内部交换数量和费用
+        _captureDelta(_params, TS_ISP_AMOUNT0, TS_ISP_AMOUNT1, internalBeforeSwapDelta);
+        _captureDeltaSwapFee(_params, TS_ISP_FEE0, TS_ISP_FEE1, swapFee);
+        
+        // 累加内部交换的 delta 和费用
+        return toBeforeSwapDelta(
+            beforeSwapDelta_.getSpecifiedDelta() + internalBeforeSwapDelta.getSpecifiedDelta(),
+            beforeSwapDelta_.getUnspecifiedDelta() + internalBeforeSwapDelta.getUnspecifiedDelta() + swapFee.toInt128()
+        );
+    }
+
+    /**
+     * @notice 检查 BidWall 状态
+     * @dev 验证 BidWall 是否过期，并允许提取流动性
+     */
+    function _checkBidWall(PoolKey calldata _key) internal {
+        // 获取当前 tick
+        (, int24 currentTick,,) = poolManager.getSlot0(_key.toId());
+        
+        // 检查 BidWall 是否过期
         bidWall.checkStalePosition({
             _poolKey: _key,
-            _currentTick: _beforeSwapTick,
+            _currentTick: currentTick,
             _nativeIsZero: nativeToken == Currency.unwrap(_key.currency0)
         });
+    }
 
-        // Set our return selector
-        // 设置我们的返回选择器
-        selector_ = IHooks.beforeSwap.selector;
+    function _clearStore(PoolId poolId) internal {
+        assembly {
+            tstore(poolId, 0)
+        }
     }
 
     /**
