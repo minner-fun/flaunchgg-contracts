@@ -229,15 +229,12 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         // Flaunch our token 启动我们的token
         (memecoin_, memecoinTreasury, tokenId) = flaunchContract.flaunch(_params);   // tokenId是nft的id
-        console2.log("memecoin address:", memecoin_);
-        console2.log("memecoinTreasury address:", memecoinTreasury);
-        console2.log("tokenId:", tokenId);
-        console2.log("nativeToken:", nativeToken);
+
 
 
         // Check if our pool currency is flipped
         bool currencyFlipped = nativeToken >= memecoin_;   // 检查我们的池货币是否翻转
-        console2.log("currencyFlipped:", currencyFlipped);
+        
 
         // Create our Uniswap pool and store the pool key for lookups 
         // 创建我们的Uniswap池 并存储池key用于查找
@@ -252,7 +249,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         // Initialize the {MemecoinTreasury} with `PoolKey` 初始化MemecoinTreasury与`PoolKey` 
         // 将MemecoinTreasury初始化与`PoolKey`
         MemecoinTreasury(memecoinTreasury).initialize(payable(address(this)), address(actionManager), nativeToken, _poolKey);  // 初始化金库合约
-        console2.log("MemecoinTreasury initialized");
+        
         
         // Set the PoolKey to storage
         _poolKeys[memecoin_] = _poolKey;   // 存储池key
@@ -262,7 +259,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         // Check if we have an initial flaunching fee, check that enough ETH has been sent
         // 检查我们是否有初始的flaunching创建费用，检查是否发送了足够的ETH
         uint flaunchFee = getFlaunchingFee(_params.initialPriceParams);   // 返回的也是在initialPrice.sol中部署的时候设定的初始值
-        console2.log("flaunchFee:", flaunchFee);
+        
 
         emit PoolCreated({
             _poolId: poolId,
@@ -309,14 +306,14 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         // 这个价格是在部署的时候设定的初始值，在initialPrice.sol中
         uint160 sqrtPriceX96 = initialPrice.getSqrtPriceX96(msg.sender, currencyFlipped, _params.initialPriceParams);
-        console2.log("sqrtPriceX96:", sqrtPriceX96);
+        
         // Initialize our memecoin with the sqrtPriceX96
         // 初始化我们的memecoin与sqrtPriceX96， sqrtPriceX96表示价格的开方后乘以2的96次方
         int24 initialTick = poolManager.initialize(   // 初始化池，返回初始tick
             _poolKey,
             sqrtPriceX96
         );
-        console2.log("initialTick:", initialTick);
+        
         /**
          * [FL] At token creation, x% of token supply is put into a one-sided position.
          * 在token创建时，x%的token供应被放入一个单边位置。
@@ -334,7 +331,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             _initialTokenFairLaunch: _params.initialTokenFairLaunch,
             _fairLaunchDuration: _params.fairLaunchDuration
         });
-        console2.log("fairLaunch.createPosition called");
+        
         /**
          * [SCHEDULE] If we have a timestamp in the future, then we set our schedule mapping.
          * 如果我们在未来有一个时间戳，那么我们设置我们的schedule映射。
