@@ -3,25 +3,24 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
+import {IPoolManager, Pool, PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
+import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+import {LPFeeLibrary} from '@uniswap/v4-core/src/libraries/LPFeeLibrary.sol';
+
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 import {BalanceDelta, toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {IPoolManager, PoolManager, Pool} from '@uniswap/v4-core/src/PoolManager.sol';
-import {LPFeeLibrary} from '@uniswap/v4-core/src/libraries/LPFeeLibrary.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
+import {PositionManager} from '@flaunch/PositionManager.sol';
 import {FeeDistributor} from '@flaunch/hooks/FeeDistributor.sol';
 import {InternalSwapPool} from '@flaunch/hooks/InternalSwapPool.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract InternalSwapPoolTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     /**
@@ -58,7 +57,7 @@ contract InternalSwapPoolTest is FlaunchTest {
     // Store our memecoin created for the test
     address memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
     }
@@ -69,7 +68,21 @@ contract InternalSwapPoolTest is FlaunchTest {
      */
     function test_CanDepositFees(uint128 _amount0, uint128 _amount1, bool _flipped) public flipTokens(_flipped) {
         // Create our memecoin
-        memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                50_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         _bypassFairLaunch();
 
@@ -94,9 +107,25 @@ contract InternalSwapPoolTest is FlaunchTest {
         assertEq(fees.amount1, _amount1, 'Incorrect starting pool token1 fees');
     }
 
-    function test_CanSwap_ZeroForOne_ExactOutput(bool _flipped) public flipTokens(_flipped) {
+    function test_CanSwap_ZeroForOne_ExactOutput(
+        bool _flipped
+    ) public flipTokens(_flipped) {
         // Create our memecoin
-        memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                50_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         _bypassFairLaunch();
 
@@ -124,8 +153,16 @@ contract InternalSwapPoolTest is FlaunchTest {
         uint positionManagerStartEth = 0 ether;
         uint positionManagerTokenStart = TokenSupply.INITIAL_SUPPLY + 2 ether;
 
-        assertEq(WETH.balanceOf(address(positionManager)), positionManagerStartEth, 'Invalid starting positionManager ETH balance');
-        assertEq(token.balanceOf(address(positionManager)), positionManagerTokenStart, 'Invalid starting positionManager token balance');
+        assertEq(
+            WETH.balanceOf(address(positionManager)),
+            positionManagerStartEth,
+            'Invalid starting positionManager ETH balance'
+        );
+        assertEq(
+            token.balanceOf(address(positionManager)),
+            positionManagerTokenStart,
+            'Invalid starting positionManager token balance'
+        );
 
         // Confirm that the fees are ready
         InternalSwapPool.ClaimableFees memory fees = positionManager.poolFees(_poolKey);
@@ -166,13 +203,37 @@ contract InternalSwapPoolTest is FlaunchTest {
         uint uniswapSwapEthSwapFee = 0.005015754488551071 ether;
 
         // Confirm that the user has received their total expected tokens
-        assertEq(WETH.balanceOf(address(this)), 10 ether - internalSwapEthInput - uniswapSwapEthInput - internalSwapEthSwapFee - uniswapSwapEthSwapFee, 'Invalid closing user ETH balance');
-        assertEq(token.balanceOf(address(this)), internalSwapTokenOutput + uniswapSwapTokenOutput, 'Invalid closing user token balance');
+        assertEq(
+            WETH.balanceOf(address(this)),
+            10 ether - internalSwapEthInput - uniswapSwapEthInput - internalSwapEthSwapFee - uniswapSwapEthSwapFee,
+            'Invalid closing user ETH balance'
+        );
+        assertEq(
+            token.balanceOf(address(this)),
+            internalSwapTokenOutput + uniswapSwapTokenOutput,
+            'Invalid closing user token balance'
+        );
     }
 
-    function test_CanSwap_ZeroForOne_ExactInput(bool _flipped) public flipTokens(_flipped) {
+    function test_CanSwap_ZeroForOne_ExactInput(
+        bool _flipped
+    ) public flipTokens(_flipped) {
         // Create our Memecoin
-        memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                50_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         _bypassFairLaunch();
 
@@ -205,8 +266,16 @@ contract InternalSwapPoolTest is FlaunchTest {
         uint positionManagerStartEth = 0 ether;
         uint positionManagerTokenStart = TokenSupply.INITIAL_SUPPLY + 2 ether;
 
-        assertEq(WETH.balanceOf(address(positionManager)), positionManagerStartEth, 'Invalid starting positionManager ETH balance');
-        assertEq(token.balanceOf(address(positionManager)), positionManagerTokenStart, 'Invalid starting positionManager token balance');
+        assertEq(
+            WETH.balanceOf(address(positionManager)),
+            positionManagerStartEth,
+            'Invalid starting positionManager ETH balance'
+        );
+        assertEq(
+            token.balanceOf(address(positionManager)),
+            positionManagerTokenStart,
+            'Invalid starting positionManager token balance'
+        );
 
         // Get our user's starting balances
         deal(address(WETH), address(this), 10 ether);
@@ -247,8 +316,15 @@ contract InternalSwapPoolTest is FlaunchTest {
         }
 
         // Confirm that the user has received their total expected tokens
-        assertEq(WETH.balanceOf(address(this)), 10 ether - internalSwapEthInput - uniswapSwapEthInput, 'Invalid closing user ETH balance');
-        assertEq(token.balanceOf(address(this)), internalSwapTokenOutput + uniswapSwapTokenOutput - internalSwapTokenSwapFee - uniswapSwapTokenSwapFee, 'Invalid closing user token balance');
+        assertEq(
+            WETH.balanceOf(address(this)),
+            10 ether - internalSwapEthInput - uniswapSwapEthInput,
+            'Invalid closing user ETH balance'
+        );
+        assertEq(
+            token.balanceOf(address(this)),
+            internalSwapTokenOutput + uniswapSwapTokenOutput - internalSwapTokenSwapFee - uniswapSwapTokenSwapFee,
+            'Invalid closing user token balance'
+        );
     }
-
 }

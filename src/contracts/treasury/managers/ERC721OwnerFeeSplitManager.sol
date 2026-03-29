@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {IERC721} from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
 
 import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
-
 
 /**
  * This contract allows holders of any number of cross-chain ERC721 contract to receive an allocation
  * from all memestreams held within the manager.
  */
 contract ERC721OwnerFeeSplitManager is FeeSplitManager {
-
     using EnumerableSet for EnumerableSet.UintSet;
 
     error DuplicateTokenId(address _erc721, uint _tokenId);
@@ -23,7 +21,9 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
 
     event ManagerInitialized(address _owner, InitializeParams _params);
     event Response(bytes32 indexed _requestId, bytes _response, bytes _err);
-    event RevenueClaimed(address indexed _recipient, address _erc721, uint _tokenId, uint _amountClaimed, uint _totalClaimed);
+    event RevenueClaimed(
+        address indexed _recipient, address _erc721, uint _tokenId, uint _amountClaimed, uint _totalClaimed
+    );
 
     /**
      * When initializing our manager we define an array of ERC721 contracts that will receive a
@@ -70,10 +70,10 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
     }
 
     /// ERC721 share metadata for each contract address
-    mapping (address _erc721 => ERC721Share _share) public erc721Shares;
+    mapping(address _erc721 => ERC721Share _share) public erc721Shares;
 
     /// Track the amount claimed for each ERC721 tokenId
-    mapping (address _erc721 => mapping (uint _tokenId => uint _claimed)) public amountClaimed;
+    mapping(address _erc721 => mapping(uint _tokenId => uint _claimed)) public amountClaimed;
 
     /**
      * Sets up the contract with the initial required contract addresses.
@@ -81,7 +81,10 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      * @param _feeEscrowRegistry The {FeeEscrowRegistry} that will be used to withdraw fees
      */
-    constructor (address _treasuryManagerFactory, address _feeEscrowRegistry) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
+    constructor(
+        address _treasuryManagerFactory,
+        address _feeEscrowRegistry
+    ) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
         // ..
     }
 
@@ -98,7 +101,9 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
 
         // Ensure that our provided data is not zero and matches
         uint erc721SharesLength = params.shares.length;
-        if (erc721SharesLength == 0) revert InvalidInitializeParams();
+        if (erc721SharesLength == 0) {
+            revert InvalidInitializeParams();
+        }
 
         emit ManagerInitialized(_owner, params);
 
@@ -135,7 +140,9 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      *
      * @return uint The amount of ETH available to claim by the `_recipient`
      */
-    function balances(address _recipient) public view override returns (uint) {
+    function balances(
+        address _recipient
+    ) public view override returns (uint) {
         (uint creatorBalance, uint ownerBalance) = _balances(_recipient);
         return creatorBalance + ownerBalance;
     }
@@ -180,7 +187,9 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      * @return creatorBalance_ The amount of creator fees available to claim by the `_recipient`
      * @return ownerBalance_ The amount of owner fees available to claim by the `_recipient`
      */
-    function _balances(address _recipient) internal view returns (uint creatorBalance_, uint ownerBalance_) {
+    function _balances(
+        address _recipient
+    ) internal view returns (uint creatorBalance_, uint ownerBalance_) {
         // We then need to check if the `_recipient` is the creator of any tokens, and if they
         // are then we need to find out the available amounts to claim.
         creatorBalance_ = pendingCreatorFees(_recipient);
@@ -209,7 +218,9 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      *
      * @return amount_ The amount claimed from the call
      */
-    function claim(bytes calldata _data) public returns (uint amount_) {
+    function claim(
+        bytes calldata _data
+    ) public returns (uint amount_) {
         amount_ = _claim(_data);
     }
 
@@ -222,7 +233,10 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      *
      * @return recipientShare_ The percentage (to 5dp) that the recipient is allocated
      */
-    function recipientShare(address _recipient, bytes memory _data) public view override returns (uint recipientShare_) {
+    function recipientShare(
+        address _recipient,
+        bytes memory _data
+    ) public view override returns (uint recipientShare_) {
         // Unpack our claim parameters
         (ClaimParams memory claimParams) = abi.decode(_data, (ClaimParams));
 
@@ -285,7 +299,7 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
         if (_creatorTokens[_recipient].length() > 0) {
             return true;
         }
-        
+
         // If we have data passed, then we assume that we are validating a token claim
         if (_data.length > 0) {
             // Unpack our claim parameters
@@ -353,7 +367,7 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
                 }
             }
         }
-        
+
         // Get our creator and owner balances for the recipient
         (uint creatorBalance, uint ownerBalance) = _balances(_recipient);
 
@@ -420,11 +434,12 @@ contract ERC721OwnerFeeSplitManager is FeeSplitManager {
      *
      * @param _claimParams The claim parameters to validate
      */
-    function _validateClaimParams(ClaimParams memory _claimParams) internal pure {
+    function _validateClaimParams(
+        ClaimParams memory _claimParams
+    ) internal pure {
         // Basic validation to ensure lengths are correct
         if (_claimParams.erc721.length == 0 || _claimParams.erc721.length != _claimParams.tokenIds.length) {
             revert InvalidClaimParams();
         }
     }
-
 }

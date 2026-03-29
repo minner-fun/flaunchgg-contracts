@@ -3,18 +3,18 @@ pragma solidity ^0.8.26;
 
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IUnlockCallback} from '@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
+import {IUnlockCallback} from '@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol';
 import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {BidWall} from '@flaunch/bidwall/BidWall.sol';
-import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
+
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
 
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
-
 
 /**
  * Takes fees from the tokens within it and then routes claimable balance into the BidWall
@@ -25,7 +25,6 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
  * @dev Anyone is able to trigger the claim for the manager itself. 任何人都可以触发管理器的claim。
  */
 contract BuyBackManager is FeeSplitManager, IUnlockCallback {
-
     using EnumerableSet for EnumerableSet.UintSet;
     using StateLibrary for PoolManager;
 
@@ -88,7 +87,13 @@ contract BuyBackManager is FeeSplitManager, IUnlockCallback {
      * @param _bidWall The BidWall contract
      * @param _flETH The flETH token
      */
-    constructor (address _treasuryManagerFactory, address _feeEscrowRegistry, address _poolManager, address _bidWall, address _flETH) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
+    constructor(
+        address _treasuryManagerFactory,
+        address _feeEscrowRegistry,
+        address _poolManager,
+        address _bidWall,
+        address _flETH
+    ) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
         buyBackContract = payable(address(this));
         poolManager = PoolManager(_poolManager);
         bidWall = BidWall(_bidWall);
@@ -125,7 +130,9 @@ contract BuyBackManager is FeeSplitManager, IUnlockCallback {
      *
      * @return balance_ The amount of ETH available to claim by the `_recipient`
      */
-    function balances(address _recipient) public view override returns (uint balance_) {
+    function balances(
+        address _recipient
+    ) public view override returns (uint balance_) {
         (uint creatorBalance, uint ownerBalance) = _balances(_recipient);
         balance_ = creatorBalance + ownerBalance;
     }
@@ -139,7 +146,9 @@ contract BuyBackManager is FeeSplitManager, IUnlockCallback {
      * @return creatorBalance_ The balance available from creator fees
      * @return ownerBalance_ The balance available from owner fees
      */
-    function _balances(address _recipient) internal view returns (uint creatorBalance_, uint ownerBalance_) {
+    function _balances(
+        address _recipient
+    ) internal view returns (uint creatorBalance_, uint ownerBalance_) {
         // We then need to check if the `_recipient` is the creator of any tokens, and if they
         // are then we need to find out the available amounts to claim.
         creatorBalance_ = pendingCreatorFees(_recipient);
@@ -235,7 +244,9 @@ contract BuyBackManager is FeeSplitManager, IUnlockCallback {
      *
      * @return nativeIsZero_ Whether the pool is using flETH as the currency0
      */
-    function _validatePoolKey(PoolKey memory _poolKey) internal view returns (bool nativeIsZero_) {
+    function _validatePoolKey(
+        PoolKey memory _poolKey
+    ) internal view returns (bool nativeIsZero_) {
         // Validate our PoolKey to ensure that it has been initialized against the PoolManager
         (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(_poolKey.toId());
         if (sqrtPriceX96 == 0) {
@@ -288,7 +299,9 @@ contract BuyBackManager is FeeSplitManager, IUnlockCallback {
      *
      * @param _buyBackPoolKey The PoolKey to buy back against
      */
-    function buyBack(PoolKey memory _buyBackPoolKey) public payable {
+    function buyBack(
+        PoolKey memory _buyBackPoolKey
+    ) public payable {
         // Ensure that this contract being called is the original implementation
         if (address(this) != buyBackContract) {
             revert InvalidImplementation();
@@ -315,7 +328,9 @@ contract BuyBackManager is FeeSplitManager, IUnlockCallback {
     /**
      * Performs the BidWall deposit using information from the CallbackData.
      */
-    function unlockCallback(bytes calldata rawData) external returns (bytes memory) {
+    function unlockCallback(
+        bytes calldata rawData
+    ) external returns (bytes memory) {
         // Ensure that the {PoolManager} has sent the message
         if (msg.sender != address(poolManager)) {
             revert InvalidCaller();
@@ -340,5 +355,4 @@ contract BuyBackManager is FeeSplitManager, IUnlockCallback {
         // Return an empty bytes array
         return abi.encode();
     }
-
 }

@@ -8,9 +8,7 @@ import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract InitialPriceTest is FlaunchTest {
-
     address owner = address(0x123);
     address nonOwner = address(0x456);
 
@@ -39,10 +37,12 @@ contract InitialPriceTest is FlaunchTest {
 
         // Set a market cap tick that is roughly equal to 2e18 : 100e27
         vm.prank(owner);
-        initialPrice.setSqrtPriceX96(InitialPrice.InitialSqrtPriceX96({
-            unflipped: TickMath.getSqrtPriceAtTick(246765),
-            flipped: TickMath.getSqrtPriceAtTick(-246766)
-        }));
+        initialPrice.setSqrtPriceX96(
+            InitialPrice.InitialSqrtPriceX96({
+                unflipped: TickMath.getSqrtPriceAtTick(246765),
+                flipped: TickMath.getSqrtPriceAtTick(-246766)
+            })
+        );
 
         // Try and get the market cap
         assertApproxEqRel(initialPrice.getMarketCap(abi.encode('')), 1.92 ether, 0.01 ether);
@@ -101,7 +101,9 @@ contract InitialPriceTest is FlaunchTest {
         initialPrice.setSqrtPriceX96(newPrice);
 
         // Ensure the prices were set correctly
-        assertEq(initialPrice.getSqrtPriceX96(address(this), false, abi.encode('')), 300, 'Unflipped price should be 300');
+        assertEq(
+            initialPrice.getSqrtPriceX96(address(this), false, abi.encode('')), 300, 'Unflipped price should be 300'
+        );
         assertEq(initialPrice.getSqrtPriceX96(address(this), true, abi.encode('')), 400, 'Flipped price should be 400');
     }
 
@@ -109,7 +111,7 @@ contract InitialPriceTest is FlaunchTest {
     function test_SetSqrtPriceX96WithEdgeValues() public {
         InitialPrice.InitialSqrtPriceX96 memory edgePrice = InitialPrice.InitialSqrtPriceX96(
             type(uint160).max, // Maximum possible uint160 value
-            0                  // Minimum possible value
+            0 // Minimum possible value
         );
 
         // Set edge values as owner
@@ -117,7 +119,11 @@ contract InitialPriceTest is FlaunchTest {
         initialPrice.setSqrtPriceX96(edgePrice);
 
         // Test retrieval of edge values
-        assertEq(initialPrice.getSqrtPriceX96(address(this), false, abi.encode('')), type(uint160).max, 'Unflipped price should be max uint160');
+        assertEq(
+            initialPrice.getSqrtPriceX96(address(this), false, abi.encode('')),
+            type(uint160).max,
+            'Unflipped price should be max uint160'
+        );
         assertEq(initialPrice.getSqrtPriceX96(address(this), true, abi.encode('')), 0, 'Flipped price should be 0');
     }
 
@@ -150,7 +156,9 @@ contract InitialPriceTest is FlaunchTest {
         assertEq(initialPrice.getFlaunchingFee(_excluded, abi.encode('')), fee);
     }
 
-    function test_CanSetFlaunchFeeThreshold(uint _newFlaunchFeeThreshold) public {
+    function test_CanSetFlaunchFeeThreshold(
+        uint _newFlaunchFeeThreshold
+    ) public {
         vm.startPrank(owner);
 
         vm.expectEmit();
@@ -172,5 +180,4 @@ contract InitialPriceTest is FlaunchTest {
 
         vm.stopPrank();
     }
-
 }

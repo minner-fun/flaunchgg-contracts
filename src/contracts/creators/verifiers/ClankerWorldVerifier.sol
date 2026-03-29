@@ -3,29 +3,26 @@ pragma solidity ^0.8.26;
 
 import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
 
-
 interface IClanker {
-
     struct DeploymentInfo {
         address token;
         uint positionId;
         address locker;
     }
 
-    function deploymentInfoForToken(address token) external view returns (DeploymentInfo memory);
-
+    function deploymentInfoForToken(
+        address token
+    ) external view returns (DeploymentInfo memory);
 }
 
 interface IClankerToken {
     function admin() external view returns (address);
 }
 
-
 /**
  * Confirms that a memecoin has been deployed on Clanker World.
  */
 contract ClankerWorldVerifier is IImportVerifier {
-    
     /// The Clanker contract
     IClanker public immutable clanker;
 
@@ -34,7 +31,9 @@ contract ClankerWorldVerifier is IImportVerifier {
      *
      * @param _clanker The address of the Clanker contract
      */
-    constructor (address _clanker) {
+    constructor(
+        address _clanker
+    ) {
         clanker = IClanker(_clanker);
     }
 
@@ -55,5 +54,4 @@ contract ClankerWorldVerifier is IImportVerifier {
         // Confirm that the sender is the original creator of the token
         return IClankerToken(_token).admin() == _sender;
     }
-
 }

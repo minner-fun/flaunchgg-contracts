@@ -5,7 +5,6 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
 
 interface IBaseAirdrop {
-
     event ApprovedAirdropCreatorAdded(address indexed _contract);
     event ApprovedAirdropCreatorRemoved(address indexed _contract);
 
@@ -24,8 +23,9 @@ interface IBaseAirdrop {
 
     function getApprovedAirdropCreators() external view returns (address[] memory);
 
-    function isApprovedAirdropCreator(address _contract) external view returns (bool);
+    function isApprovedAirdropCreator(
+        address _contract
+    ) external view returns (bool);
 
     function setApprovedAirdropCreators(address _contract, bool _approved) external;
-
 }

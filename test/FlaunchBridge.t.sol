@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {IL2ToL2CrossDomainMessenger} from "@optimism/interfaces/L2/IL2ToL2CrossDomainMessenger.sol";
+import {IL2ToL2CrossDomainMessenger} from '@optimism/interfaces/L2/IL2ToL2CrossDomainMessenger.sol';
 import {Predeploys} from '@optimism/src/libraries/Predeploys.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
@@ -11,9 +11,7 @@ import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
 import {FlaunchTest} from './FlaunchTest.sol';
 
-
 contract FlaunchBridgeTest is FlaunchTest {
-
     /// This will be the token ID of the flaunched token
     uint TOKEN_ID = 1;
 
@@ -69,13 +67,13 @@ contract FlaunchBridgeTest is FlaunchTest {
         assertEq(
             flaunch.bridgingStarted(TOKEN_ID, ALTERNATIVE_CHAIN_ID),
             0,
-            "Bridging started should be zero before initialization."
+            'Bridging started should be zero before initialization.'
         );
 
         assertEq(
             flaunch.bridgingFinalized(TOKEN_ID, ALTERNATIVE_CHAIN_ID),
             false,
-            "Bridging should not be finalized by default."
+            'Bridging should not be finalized by default.'
         );
 
         vm.expectEmit();
@@ -87,13 +85,11 @@ contract FlaunchBridgeTest is FlaunchTest {
         assertEq(
             flaunch.bridgingStarted(TOKEN_ID, ALTERNATIVE_CHAIN_ID),
             block.timestamp,
-            "Bridging started should show current timestamp after initialization."
+            'Bridging started should show current timestamp after initialization.'
         );
 
         assertEq(
-            flaunch.bridgingFinalized(TOKEN_ID, ALTERNATIVE_CHAIN_ID),
-            false,
-            "Bridging should still not be finalized."
+            flaunch.bridgingFinalized(TOKEN_ID, ALTERNATIVE_CHAIN_ID), false, 'Bridging should still not be finalized.'
         );
     }
 
@@ -110,11 +106,8 @@ contract FlaunchBridgeTest is FlaunchTest {
     }
 
     function test_CanFinalizeBridge_Success() public isValidMessenger isValidSender {
-        Flaunch.MemecoinMetadata memory memecoinMetadata = Flaunch.MemecoinMetadata({
-            name: memecoin.name(),
-            symbol: memecoin.symbol(),
-            tokenUri: memecoin.tokenURI()
-        });
+        Flaunch.MemecoinMetadata memory memecoinMetadata =
+            Flaunch.MemecoinMetadata({name: memecoin.name(), symbol: memecoin.symbol(), tokenUri: memecoin.tokenURI()});
 
         uint tokenId = TOKEN_ID + 1;
 
@@ -134,7 +127,7 @@ contract FlaunchBridgeTest is FlaunchTest {
         assertEq(
             flaunch.bridgingFinalized(tokenId, ALTERNATIVE_CHAIN_ID),
             true,
-            "Bridging should now be finalized after function successfully called."
+            'Bridging should now be finalized after function successfully called.'
         );
 
         // We should now receive a revert if we try to initialize the same contract again
@@ -171,12 +164,12 @@ contract FlaunchBridgeTest is FlaunchTest {
         assertEq(flaunch.bridgingStarted(TOKEN_ID, ALTERNATIVE_CHAIN_ID), startTimestamp + _validTimeDelta);
     }
 
-    modifier isValidMessenger {
+    modifier isValidMessenger() {
         vm.startPrank(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
         _;
     }
 
-    modifier isValidSender {
+    modifier isValidSender() {
         vm.mockCall(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             abi.encodeWithSelector(IL2ToL2CrossDomainMessenger.crossDomainMessageSender.selector),
@@ -185,5 +178,4 @@ contract FlaunchBridgeTest is FlaunchTest {
 
         _;
     }
-
 }

@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-
 interface IAirdropClaim {
-
     // Allocate by merkle
     function allocate(address _token, bytes32 _merkle) external payable;
 
@@ -15,5 +13,4 @@ interface IAirdropClaim {
 
     // Approve or Unapprove a sender
     function setSender(address _sender, bool _approved) external;
-
 }

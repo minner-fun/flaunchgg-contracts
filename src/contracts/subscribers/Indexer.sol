@@ -9,13 +9,11 @@ import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
 
-
 /**
  * Creates an evolving list of pools on Flaunch and maps its corresponding token
  * information for onchain lookups.
  */
 contract IndexerSubscriber is Ownable {
-
     using PoolIdLibrary for PoolKey;
 
     error InvalidTokenId(address _flaunch, uint _tokenId);
@@ -47,18 +45,18 @@ contract IndexerSubscriber is Ownable {
     }
 
     /// Maps a PoolId to the token index information
-    mapping (PoolId _poolId => Index _index) internal _poolIndex;
+    mapping(PoolId _poolId => Index _index) internal _poolIndex;
 
     /// Maps a PoolId to a Flaunch contract
-    mapping (PoolId _poolId => Flaunch _flaunch) internal _poolFlaunch;
+    mapping(PoolId _poolId => Flaunch _flaunch) internal _poolFlaunch;
 
     /// Maps each notifier to the flaunch contract that it will represent
-    mapping (address _notifier => address _flaunch) internal _notifierFlaunch;
+    mapping(address _notifier => address _flaunch) internal _notifierFlaunch;
 
     /**
      * Registers the owner of the contract.
      */
-    constructor () {
+    constructor() {
         _initializeOwner(msg.sender);
     }
 
@@ -69,7 +67,9 @@ contract IndexerSubscriber is Ownable {
      *
      * @dev This must return `true` to be subscribed.
      */
-    function subscribe(bytes memory /* _data */) public pure returns (bool) {
+    function subscribe(
+        bytes memory /* _data */
+    ) public pure returns (bool) {
         return true;
     }
 
@@ -124,7 +124,9 @@ contract IndexerSubscriber is Ownable {
      * @return memecoinTreasury_ The memecoin treasury address
      * @return tokenId_ The tokenId created with the pool (0 if burned)
      */
-    function poolIndex(PoolId _poolId) public view returns (address flaunch_, address memecoin_, address memecoinTreasury_, uint tokenId_) {
+    function poolIndex(
+        PoolId _poolId
+    ) public view returns (address flaunch_, address memecoin_, address memecoinTreasury_, uint tokenId_) {
         // Get the index information for the given PoolId
         Index memory poolIndex_ = _poolIndex[_poolId];
 
@@ -149,7 +151,9 @@ contract IndexerSubscriber is Ownable {
      *
      * @param _params Information to add legacy indexes
      */
-    function addIndex(AddIndexParams[] calldata _params) public {
+    function addIndex(
+        AddIndexParams[] calldata _params
+    ) public {
         // Declare our global variables
         AddIndexParams memory params;
         Flaunch flaunch;
@@ -206,5 +210,4 @@ contract IndexerSubscriber is Ownable {
     function setNotifierFlaunch(address _notifier, address _flaunch) public onlyOwner {
         _notifierFlaunch[_notifier] = _flaunch;
     }
-
 }

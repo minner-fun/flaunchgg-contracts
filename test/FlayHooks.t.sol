@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {Pool} from '@uniswap/v4-core/src/libraries/Pool.sol';
 import {PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
-import {PoolModifyLiquidityTest} from '@uniswap/v4-core/src/test/PoolModifyLiquidityTest.sol';
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
+import {Pool} from '@uniswap/v4-core/src/libraries/Pool.sol';
+
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {PoolModifyLiquidityTest} from '@uniswap/v4-core/src/test/PoolModifyLiquidityTest.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {FlayHooks} from '@flaunch/FlayHooks.sol';
-import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
-import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
-import {ERC20Mock} from './tokens/ERC20Mock.sol';
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
+
 import {FlaunchTest} from './FlaunchTest.sol';
+import {ERC20Mock} from './tokens/ERC20Mock.sol';
 import {HookMiner} from './utils/HookMiner.sol';
 
-
 contract FlayHooksTest is FlaunchTest {
-
     /// Set contract addresses hardcoded on the FlayHooks contract
     address public constant TOKEN_0 = 0x000000000D564D5be76f7f0d28fE52605afC7Cf8;
     address public constant TOKEN_1 = 0xF1A7000000950C7ad8Aff13118Bb7aB561A448ee;
@@ -49,11 +50,15 @@ contract FlayHooksTest is FlaunchTest {
 
         // Deploy our FlayHooks contract to a valid address
         (, bytes32 salt) = HookMiner.find(
-            // @dev The address that will deploy the hook. In `forge test`, this will be the test contract `address(this)`
+            // @dev The address that will deploy the hook. In `forge test`, this will be the test contract
+            // `address(this)`
             // or the pranking address. In `forge script`, this should be `0x4e59b44847b379578588920cA78FbF26c0B4956C`
             // (CREATE2 Deployer Proxy).
             address(this),
-            uint160(Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG),
+            uint160(
+                Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
+                    | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+            ),
             type(FlayHooks).creationCode,
             abi.encode(SQRT_PRICE_1_1, address(this))
         );
@@ -64,13 +69,8 @@ contract FlayHooksTest is FlaunchTest {
 
     function test_CanGetPublicVariables() public view {
         // Check and validate our pool key
-        (
-            Currency currency0,
-            Currency currency1,
-            uint24 fee,
-            int24 tickSpacing,
-            IHooks hooks
-        ) = flayHooks.flayNativePoolKey();
+        (Currency currency0, Currency currency1, uint24 fee, int24 tickSpacing, IHooks hooks) =
+            flayHooks.flayNativePoolKey();
 
         assertEq(Currency.unwrap(currency0), address(token0));
         assertEq(Currency.unwrap(currency1), address(token1));
@@ -107,7 +107,9 @@ contract FlayHooksTest is FlaunchTest {
         assertEq(permissions.afterRemoveLiquidityReturnDelta, false);
     }
 
-    function test_CannotInitializeDirectly(uint160 _initialSqrtPriceX96) public {
+    function test_CannotInitializeDirectly(
+        uint160 _initialSqrtPriceX96
+    ) public {
         _assumeValidSqrtPriceX96(_initialSqrtPriceX96);
 
         vm.expectRevert();
@@ -123,20 +125,17 @@ contract FlayHooksTest is FlaunchTest {
         });
     }
 
-    function test_CanSwap(uint _seed) public {
+    function test_CanSwap(
+        uint _seed
+    ) public {
         // Ensure we have enough tokens for liquidity and approve them for our {PoolManager}
         deal(address(token0), address(this), 10e27);
         deal(address(token1), address(this), 10e27);
         token0.approve(address(poolModifyPosition), type(uint).max);
         token1.approve(address(poolModifyPosition), type(uint).max);
 
-        (
-            Currency currency0,
-            Currency currency1,
-            uint24 fee,
-            int24 tickSpacing,
-            IHooks hooks
-        ) = flayHooks.flayNativePoolKey();
+        (Currency currency0, Currency currency1, uint24 fee, int24 tickSpacing, IHooks hooks) =
+            flayHooks.flayNativePoolKey();
 
         PoolKey memory poolKey = PoolKey(currency0, currency1, fee, tickSpacing, hooks);
 
@@ -182,13 +181,8 @@ contract FlayHooksTest is FlaunchTest {
         token0.approve(address(poolModifyPosition), type(uint).max);
         token1.approve(address(poolModifyPosition), type(uint).max);
 
-        (
-            Currency currency0,
-            Currency currency1,
-            uint24 fee,
-            int24 tickSpacing,
-            IHooks hooks
-        ) = flayHooks.flayNativePoolKey();
+        (Currency currency0, Currency currency1, uint24 fee, int24 tickSpacing, IHooks hooks) =
+            flayHooks.flayNativePoolKey();
 
         PoolKey memory poolKey = PoolKey(currency0, currency1, fee, tickSpacing, hooks);
 
@@ -228,9 +222,10 @@ contract FlayHooksTest is FlaunchTest {
         );
     }
 
-    function _assumeValidSqrtPriceX96(uint160 _initialSqrtPriceX96) internal pure {
+    function _assumeValidSqrtPriceX96(
+        uint160 _initialSqrtPriceX96
+    ) internal pure {
         vm.assume(_initialSqrtPriceX96 >= TickMath.MIN_SQRT_PRICE);
         vm.assume(_initialSqrtPriceX96 < TickMath.MAX_SQRT_PRICE);
     }
-
 }

@@ -5,21 +5,20 @@ import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
-import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
+
 import {AddressFeeSplitManager} from '@flaunch/treasury/managers/AddressFeeSplitManager.sol';
+import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
 
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 
 import {FlaunchTest} from 'test/FlaunchTest.sol';
 
-
 contract AddressFeeSplitManagerTest is FlaunchTest {
-
     // The treasury manager
     AddressFeeSplitManager addressFeeSplitManager;
     address managerImplementation;
-    
+
     uint public constant VALID_CREATOR_SHARE = 10_00000;
     uint public constant MAX_SHARE = 100_00000;
 
@@ -35,11 +34,14 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
     function setUp() public {
         _deployPlatform();
 
-        managerImplementation = address(new AddressFeeSplitManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+        managerImplementation =
+            address(new AddressFeeSplitManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
         treasuryManagerFactory.approveManager(managerImplementation);
     }
 
-    function test_CanInitializeSuccessfully(uint _creatorShare) public {
+    function test_CanInitializeSuccessfully(
+        uint _creatorShare
+    ) public {
         vm.assume(_creatorShare <= MAX_SHARE);
 
         // Set up our revenue split
@@ -57,7 +59,9 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         assertEq(addressFeeSplitManager.creatorShare(), _creatorShare);
     }
 
-    function test_CannotInitializeWithInvalidCreatorShare(uint _invalidShare) public {
+    function test_CannotInitializeWithInvalidCreatorShare(
+        uint _invalidShare
+    ) public {
         vm.assume(_invalidShare > MAX_SHARE);
 
         // Set up our revenue split
@@ -70,7 +74,9 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         _deployWithRecipients(recipientShares, _invalidShare, 0);
     }
 
-    function test_CannotInitializeWithInvalidOwnerShare(uint _invalidShare) public {
+    function test_CannotInitializeWithInvalidOwnerShare(
+        uint _invalidShare
+    ) public {
         vm.assume(_invalidShare > MAX_SHARE);
 
         // Set up our revenue split
@@ -108,10 +114,9 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         recipientShares[1] = AddressFeeSplitManager.RecipientShare({recipient: recipient2, share: 50_00000});
 
         // Set up our {TreasuryManagerFactory} and approve our implementation
-        vm.expectRevert(abi.encodeWithSelector(
-            FeeSplitManager.InvalidRecipientShareTotal.selector,
-            90_00000, MAX_SHARE
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeSplitManager.InvalidRecipientShareTotal.selector, 90_00000, MAX_SHARE)
+        );
 
         // Initialize our token
         _deployWithRecipients(recipientShares, VALID_CREATOR_SHARE, 0);
@@ -237,7 +242,9 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         assertEq(addressFeeSplitManager.isValidRecipient(recipient5, EMPTY_BYTES), false, 'recipient5 valid');
 
         // Confirm that the managerOwner is set as a valid recipient
-        assertEq(addressFeeSplitManager.isValidRecipient(address(this), EMPTY_BYTES), true, 'address(this) owner not valid');
+        assertEq(
+            addressFeeSplitManager.isValidRecipient(address(this), EMPTY_BYTES), true, 'address(this) owner not valid'
+        );
 
         // Confirm the share is set
         assertEq(addressFeeSplitManager.creatorShare(), 20_00000);
@@ -254,10 +261,26 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         flaunch.setApprovalForAll(address(addressFeeSplitManager), true);
 
         // Deposit our tokens into the manager, with specific creators
-        addressFeeSplitManager.deposit({_flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId1), _creator: recipient3, _data: abi.encode('')});
-        addressFeeSplitManager.deposit({_flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId2), _creator: recipient5, _data: abi.encode('')});
-        addressFeeSplitManager.deposit({_flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId3), _creator: recipient5, _data: abi.encode('')});
-        addressFeeSplitManager.deposit({_flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId4), _creator: address(this), _data: abi.encode('')});
+        addressFeeSplitManager.deposit({
+            _flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId1),
+            _creator: recipient3,
+            _data: abi.encode('')
+        });
+        addressFeeSplitManager.deposit({
+            _flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId2),
+            _creator: recipient5,
+            _data: abi.encode('')
+        });
+        addressFeeSplitManager.deposit({
+            _flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId3),
+            _creator: recipient5,
+            _data: abi.encode('')
+        });
+        addressFeeSplitManager.deposit({
+            _flaunchToken: ITreasuryManager.FlaunchToken(flaunch, tokenId4),
+            _creator: address(this),
+            _data: abi.encode('')
+        });
 
         // Confirm the tokens that are held by some of the users
         ITreasuryManager.FlaunchToken[] memory flaunchTokens;
@@ -306,20 +329,20 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
 
         // None of the creators should have balances currently, but the recipient shares should have
         // the correct balance allocated.
-        assertEq(addressFeeSplitManager.balances(recipient1), 2.70 ether);
+        assertEq(addressFeeSplitManager.balances(recipient1), 2.7 ether);
         assertEq(addressFeeSplitManager.balances(recipient2), 2.25 ether);
-        assertEq(addressFeeSplitManager.balances(recipient3), 1.80 ether);
+        assertEq(addressFeeSplitManager.balances(recipient3), 1.8 ether);
         assertEq(addressFeeSplitManager.balances(recipient4), 2.25 ether);
         assertEq(addressFeeSplitManager.balances(recipient5), 0);
         assertEq(addressFeeSplitManager.balances(address(this)), 1 ether);
 
         // Allocate some fees against the PoolId of a subset of our tokens. This will allocate fees
         // to the creators that will then be claimable by those specific creators.
-        _allocatePoolFees(2 ether, tokenId1);  // recipient3
-        _allocatePoolFees(2 ether, tokenId1);  // recipient3
-        _allocatePoolFees(2 ether, tokenId2);  // recipient5
-        _allocatePoolFees(2 ether, tokenId3);  // recipient5
-        _allocatePoolFees(2 ether, tokenId4);  // address(this)
+        _allocatePoolFees(2 ether, tokenId1); // recipient3
+        _allocatePoolFees(2 ether, tokenId1); // recipient3
+        _allocatePoolFees(2 ether, tokenId2); // recipient5
+        _allocatePoolFees(2 ether, tokenId3); // recipient5
+        _allocatePoolFees(2 ether, tokenId4); // address(this)
 
         // Allocate some fees against a PoolId that does not match the recipient. This will allocate
         // the fees against creators, but won't actually be claimable by any of the creators (leaving
@@ -338,20 +361,28 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         assertEq(addressFeeSplitManager.splitFees(), 9 ether, 'Invalid splitFees');
 
         // These functions will show both held and pending fees
-        assertEq(addressFeeSplitManager.creatorFees(), 4 ether, 'Invalid creatorFees');  // 20% of 20 ether
-        assertEq(addressFeeSplitManager.ownerFees(), 3 ether, 'Invalid ownerFees');  // 10% of 30 ether
-        assertEq(addressFeeSplitManager.managerFees(), 23 ether, 'Invalid managerFees'); // 70% of 20 ether + 90% of 10 ether
+        assertEq(addressFeeSplitManager.creatorFees(), 4 ether, 'Invalid creatorFees'); // 20% of 20 ether
+        assertEq(addressFeeSplitManager.ownerFees(), 3 ether, 'Invalid ownerFees'); // 10% of 30 ether
+        assertEq(addressFeeSplitManager.managerFees(), 23 ether, 'Invalid managerFees'); // 70% of 20 ether + 90% of 10
+            // ether
 
         // Confirm our balances are correct
         // +---------------------------------------------------------------------+------------------+-----------------+------------------+
-        // | Test                                                                | Fee Share        | Creator         | Owner            |
+        // | Test                                                                | Fee Share        | Creator         |
+        // Owner            |
         // +---------------------------------------------------------------------+------------------+-----------------+------------------+
-        assertEq(addressFeeSplitManager.balances(recipient1), 6.90 ether);    // | 30% of 23 ether  |  0% of 4 ether  |   0% of 3 ether  |
-        assertEq(addressFeeSplitManager.balances(recipient2), 5.75 ether);    // | 25% of 23 ether  |  0% of 4 ether  |   0% of 3 ether  |
-        assertEq(addressFeeSplitManager.balances(recipient3), 5.40 ether);    // | 20% of 23 ether  | 20% of 4 ether  |   0% of 3 ether  |
-        assertEq(addressFeeSplitManager.balances(recipient4), 5.75 ether);    // | 25% of 23 ether  |  0% of 4 ether  |   0% of 3 ether  |
-        assertEq(addressFeeSplitManager.balances(recipient5), 0.80 ether);    // |  0% of 23 ether  | 20% of 4 ether  |   0% of 3 ether  |
-        assertEq(addressFeeSplitManager.balances(address(this)), 3.40 ether); // |  0% of 23 ether  | 20% of 2 ether  | 100% of 3 ether  |
+        assertEq(addressFeeSplitManager.balances(recipient1), 6.9 ether); // | 30% of 23 ether  |  0% of 4 ether  |   0%
+            // of 3 ether  |
+        assertEq(addressFeeSplitManager.balances(recipient2), 5.75 ether); // | 25% of 23 ether  |  0% of 4 ether  |   0%
+            // of 3 ether  |
+        assertEq(addressFeeSplitManager.balances(recipient3), 5.4 ether); // | 20% of 23 ether  | 20% of 4 ether  |   0%
+            // of 3 ether  |
+        assertEq(addressFeeSplitManager.balances(recipient4), 5.75 ether); // | 25% of 23 ether  |  0% of 4 ether  |   0%
+            // of 3 ether  |
+        assertEq(addressFeeSplitManager.balances(recipient5), 0.8 ether); // |  0% of 23 ether  | 20% of 4 ether  |   0%
+            // of 3 ether  |
+        assertEq(addressFeeSplitManager.balances(address(this)), 3.4 ether); // |  0% of 23 ether  | 20% of 2 ether  |
+            // 100% of 3 ether  |
         // +---------------------------------------------------------------------+------------------+-----------------+------------------+
 
         // Allocate some additional pool fees
@@ -397,18 +428,34 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         _allocatePoolFees(5 ether, tokenId3);
 
         // Confirm that we have updated balances
-        assertEq(addressFeeSplitManager.balances(recipient1), 2.10 ether);
+        assertEq(addressFeeSplitManager.balances(recipient1), 2.1 ether);
         assertEq(addressFeeSplitManager.balances(recipient2), 1.75 ether);
-        assertEq(addressFeeSplitManager.balances(recipient3), 1.40 ether);
+        assertEq(addressFeeSplitManager.balances(recipient3), 1.4 ether);
         assertEq(addressFeeSplitManager.balances(recipient4), 1.75 ether);
-        assertEq(addressFeeSplitManager.balances(recipient5), 2.00 ether);
+        assertEq(addressFeeSplitManager.balances(recipient5), 2.0 ether);
         assertEq(addressFeeSplitManager.balances(address(this)), 1 ether);
 
         // Confirm `tokenTotalClaimed`; this should equal 20% of 20 ether
-        assertEq(addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId1), 1.8 ether, 'Invalid tokenId1 tokenTotalClaimed');
-        assertEq(addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId2), 1.4 ether, 'Invalid tokenId2 tokenTotalClaimed');
-        assertEq(addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId3), 0.4 ether, 'Invalid tokenId3 tokenTotalClaimed');
-        assertEq(addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId4), 0.4 ether, 'Invalid tokenId4 tokenTotalClaimed');
+        assertEq(
+            addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId1),
+            1.8 ether,
+            'Invalid tokenId1 tokenTotalClaimed'
+        );
+        assertEq(
+            addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId2),
+            1.4 ether,
+            'Invalid tokenId2 tokenTotalClaimed'
+        );
+        assertEq(
+            addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId3),
+            0.4 ether,
+            'Invalid tokenId3 tokenTotalClaimed'
+        );
+        assertEq(
+            addressFeeSplitManager.tokenTotalClaimed(address(flaunch), tokenId4),
+            0.4 ether,
+            'Invalid tokenId4 tokenTotalClaimed'
+        );
 
         // Confirm `creatorTotalClaimed`; this should equal 20% of 20 ether
         assertEq(addressFeeSplitManager.creatorTotalClaimed(recipient1), 0);
@@ -532,7 +579,9 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         assertEq(addressFeeSplitManager.amountClaimed(recipient4), 90);
     }
 
-    function _createERC721(address _recipient) internal returns (uint tokenId_) {
+    function _createERC721(
+        address _recipient
+    ) internal returns (uint tokenId_) {
         // Flaunch another memecoin to mint a tokenId
         address memecoin = positionManager.flaunch(
             PositionManager.FlaunchParams({
@@ -563,22 +612,22 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         address payable manager = treasuryManagerFactory.deployAndInitializeManager({
             _managerImplementation: managerImplementation,
             _owner: address(this),
-            _data: abi.encode(
-                AddressFeeSplitManager.InitializeParams(_creatorShare, _ownerShare, _recipientShares)
-            )
+            _data: abi.encode(AddressFeeSplitManager.InitializeParams(_creatorShare, _ownerShare, _recipientShares))
         });
 
         addressFeeSplitManager = AddressFeeSplitManager(manager);
     }
 
-    function _allocateFees(uint _amount) internal {
+    function _allocateFees(
+        uint _amount
+    ) internal {
         // Mint ETH to the flETH contract to facilitate unwrapping
         deal(address(this), _amount);
         WETH.deposit{value: _amount}();
         WETH.transfer(address(positionManager), _amount);
 
         positionManager.allocateFeesMock({
-            _poolId: PoolId.wrap(bytes32('1')),  // Can be mocked to anything
+            _poolId: PoolId.wrap(bytes32('1')), // Can be mocked to anything
             _recipient: payable(address(addressFeeSplitManager)),
             _amount: _amount
         });
@@ -596,11 +645,6 @@ contract AddressFeeSplitManagerTest is FlaunchTest {
         );
 
         // Allocate our fees directly to the FeeEscrow
-        feeEscrow.allocateFees({
-            _poolId: poolId,
-            _recipient: payable(address(addressFeeSplitManager)),
-            _amount: _amount
-        });
+        feeEscrow.allocateFees({_poolId: poolId, _recipient: payable(address(addressFeeSplitManager)), _amount: _amount});
     }
-
 }

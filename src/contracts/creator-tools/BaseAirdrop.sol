@@ -12,7 +12,6 @@ import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFacto
 import {IBaseAirdrop} from '@flaunch-interfaces/IBaseAirdrop.sol';
 
 contract BaseAirdrop is Ownable, IBaseAirdrop {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// The addresses of approved airdrop creators
@@ -47,10 +46,14 @@ contract BaseAirdrop is Ownable, IBaseAirdrop {
      */
     function setApprovedAirdropCreators(address _contract, bool _approved) external override(IBaseAirdrop) onlyOwner {
         if (_approved) {
-            if (!_approvedAirdropCreators.add(_contract)) revert ApprovedAirdropCreatorAlreadyAdded();
+            if (!_approvedAirdropCreators.add(_contract)) {
+                revert ApprovedAirdropCreatorAlreadyAdded();
+            }
             emit ApprovedAirdropCreatorAdded(_contract);
         } else {
-            if (!_approvedAirdropCreators.remove(_contract)) revert ApprovedAirdropCreatorNotPresent();
+            if (!_approvedAirdropCreators.remove(_contract)) {
+                revert ApprovedAirdropCreatorNotPresent();
+            }
             emit ApprovedAirdropCreatorRemoved(_contract);
         }
     }
@@ -73,16 +76,18 @@ contract BaseAirdrop is Ownable, IBaseAirdrop {
      *
      * @return If the contract is approved
      */
-    function isApprovedAirdropCreator(address _contract) external view override(IBaseAirdrop) returns (bool) {
+    function isApprovedAirdropCreator(
+        address _contract
+    ) external view override(IBaseAirdrop) returns (bool) {
         return _approvedAirdropCreators.contains(_contract);
     }
 
     /**
      * Pulls in the tokens from the sender. Handles ETH to flETH wrapping.
-     * 
+     *
      * @param _token The token to pull in
      * @param _amount The amount of tokens to pull in
-     * 
+     *
      * @return amount The amount of tokens pulled in
      */
     function _pullTokens(address _token, uint _amount) internal returns (uint amount) {
@@ -96,17 +101,19 @@ contract BaseAirdrop is Ownable, IBaseAirdrop {
         else {
             // If ETH was also sent to the call, revert this as we don't handle multiple
             // token type submissions.
-            if (msg.value != 0) revert ETHSentForTokenAirdrop();
+            if (msg.value != 0) {
+                revert ETHSentForTokenAirdrop();
+            }
             SafeTransferLib.safeTransferFrom(_token, msg.sender, address(this), amount);
         }
     }
 
     /**
-      * Withdraws an airdrop allocation to the `msg.sender`.
-      *
-      * @param _token The token to claim from the airdrop
-      * @param _amount The amount of tokens to claim
-      */
+     * Withdraws an airdrop allocation to the `msg.sender`.
+     *
+     * @param _token The token to claim from the airdrop
+     * @param _amount The amount of tokens to claim
+     */
     function _withdraw(address _token, uint _amount) internal {
         // If the airdrop was added as ETH, then it will have been wrapped into flETH during
         // the process. For this reason, we need to unwrap it first to return it to it's
@@ -128,9 +135,11 @@ contract BaseAirdrop is Ownable, IBaseAirdrop {
      */
     modifier onlyApprovedAirdropCreators() {
         if (
-            !_approvedAirdropCreators.contains(msg.sender) &&
-            !_approvedAirdropCreators.contains(treasuryManagerFactory.managerImplementation(msg.sender))
-        ) revert NotApprovedAirdropCreator();
+            !_approvedAirdropCreators.contains(msg.sender)
+                && !_approvedAirdropCreators.contains(treasuryManagerFactory.managerImplementation(msg.sender))
+        ) {
+            revert NotApprovedAirdropCreator();
+        }
         _;
     }
 

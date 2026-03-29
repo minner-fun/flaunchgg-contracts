@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
-import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 
-import {BidWall} from '@flaunch/bidwall/BidWall.sol';
+import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
+import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {BidWall} from '@flaunch/bidwall/BidWall.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
 import {MemecoinMock} from 'test/mocks/MemecoinMock.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract BidWallTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
     using StateLibrary for PoolManager;
 
@@ -32,12 +32,26 @@ contract BidWallTest is FlaunchTest {
 
     MemecoinMock memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
         // Create our memecoin
-        address _memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        address _memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                50_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
         memecoin = MemecoinMock(_memecoin);
 
         uint tokenId = flaunch.tokenId(_memecoin);
@@ -99,7 +113,9 @@ contract BidWallTest is FlaunchTest {
         bidWall.setDisabledState({_key: poolKey, _disable: true});
     }
 
-    function test_CannotDisableBidWallWithInvalidPoolKey(uint24 _invalidFee) public {
+    function test_CannotDisableBidWallWithInvalidPoolKey(
+        uint24 _invalidFee
+    ) public {
         // Update our PoolKey to modify the fee to be different. This should invalidate the PoolId
         // that is generated and prevent the BidWall from disabling. The maximum value is also set
         // as defined in the {PoolKey} struct definition.
@@ -154,14 +170,32 @@ contract BidWallTest is FlaunchTest {
         assertEq(pendingETHFees, 0);
     }
 
-    function test_CanFundBidWallWithFees(bool _flipped) external flipTokens(_flipped) {
-        /** START: Flipped pre-run **/
+    function test_CanFundBidWallWithFees(
+        bool _flipped
+    ) external flipTokens(_flipped) {
+        /**
+         * START: Flipped pre-run *
+         */
 
         // Provide the PoolManager with some ETH because otherwise it sulks about being poor
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin now that we have might have flipped.
-        address _memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        address _memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                50_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
         memecoin = MemecoinMock(_memecoin);
         memecoinTreasury = flaunch.memecoinTreasury(flaunch.tokenId(_memecoin));
 
@@ -189,7 +223,9 @@ contract BidWallTest is FlaunchTest {
         bidWall = positionManager.bidWall();
         bidWall.setSwapFeeThreshold(1);
 
-        /** END: Flipped pre-run **/
+        /**
+         * END: Flipped pre-run *
+         */
 
         // Skip the FairLaunch from taking place
         _bypassFairLaunch();
@@ -293,12 +329,28 @@ contract BidWallTest is FlaunchTest {
         assertGt(liquidity, 0);
     }
 
-    function test_CanReceiveFullFairLaunchAmount(bool _flipped) external flipTokens(_flipped) {
+    function test_CanReceiveFullFairLaunchAmount(
+        bool _flipped
+    ) external flipTokens(_flipped) {
         // Provide the PoolManager with some ETH because otherwise it sulks about being poor
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin now that we have might have flipped.
-        address _memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        address _memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                50_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
         memecoin = MemecoinMock(_memecoin);
         memecoinTreasury = flaunch.memecoinTreasury(flaunch.tokenId(_memecoin));
 
@@ -347,7 +399,8 @@ contract BidWallTest is FlaunchTest {
         );
 
         // So we haven't currently hit the threshold, so the BidWall should not be initialized
-        (, bool initialized, int24 tickLower, int24 tickUpper, uint pendingETHFees, uint cumulativeSwapFees) = bidWall.poolInfo(poolKey.toId());
+        (, bool initialized, int24 tickLower, int24 tickUpper, uint pendingETHFees, uint cumulativeSwapFees) =
+            bidWall.poolInfo(poolKey.toId());
         assertEq(initialized, false, 'BidWall should not be initialized');
 
         vm.stopPrank();
@@ -385,7 +438,9 @@ contract BidWallTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function test_CanSetSwapFeeThresholdWithOwner(uint _newSwapFeeThreshold) public {
+    function test_CanSetSwapFeeThresholdWithOwner(
+        uint _newSwapFeeThreshold
+    ) public {
         vm.expectEmit();
         emit BidWall.FixedSwapFeeThresholdUpdated(_newSwapFeeThreshold);
 
@@ -530,11 +585,10 @@ contract BidWallTest is FlaunchTest {
 
     // Helpers
 
-    function _swap(IPoolManager.SwapParams memory swapParams) internal returns (BalanceDelta delta) {
-        delta = poolSwap.swap(
-            poolKey,
-            swapParams
-        );
+    function _swap(
+        IPoolManager.SwapParams memory swapParams
+    ) internal returns (BalanceDelta delta) {
+        delta = poolSwap.swap(poolKey, swapParams);
     }
 
     modifier poolHasLiquidity() {
@@ -556,5 +610,4 @@ contract BidWallTest is FlaunchTest {
 
         _;
     }
-
 }

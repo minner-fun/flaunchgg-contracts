@@ -9,20 +9,19 @@ import {ProxyCheck} from '@flaunch/libraries/ProxyCheck.sol';
 
 import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
 
-
 /**
  * Interface for the Zora Coin contract.
  */
 interface IZoraCoin {
-    function isOwner(address _owner) external view returns (bool);
+    function isOwner(
+        address _owner
+    ) external view returns (bool);
 }
-
 
 /**
  * Confirms that a memecoin has been defined in the Zora Airlock.
  */
 contract ZoraVerifier is IImportVerifier, Ownable {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error ZeroAddress();
@@ -35,7 +34,7 @@ contract ZoraVerifier is IImportVerifier, Ownable {
     /**
      * Registers the Zora token implementation contract.
      */
-    constructor () {
+    constructor() {
         // Set the owner to the deployer
         _initializeOwner(msg.sender);
     }
@@ -79,5 +78,4 @@ contract ZoraVerifier is IImportVerifier, Ownable {
 
         emit ZoraCoinImplementationSet(_zoraCoinImplementation, _valid);
     }
-
 }

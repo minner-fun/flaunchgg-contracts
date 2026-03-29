@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
-
 
 /**
  * Calculates the fee to be paid for a swap based on the amount of volume being transacted in
@@ -20,7 +19,6 @@ import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
  * @dev This has been replaced by {DynamicFeeCalculatorV2} and should not be used.
  */
 contract DynamicFeeCalculator is IFeeCalculator {
-
     using PoolIdLibrary for PoolKey;
 
     /// Fee can only be increased, if the aggreageted volume is greater than FEE_INCREASE_TOKEN1_UNIT
@@ -51,7 +49,6 @@ contract DynamicFeeCalculator is IFeeCalculator {
     // represented as 100.
     uint24 internal constant FEE_DECREASE_PER_TIME_UNIT = 10;
 
-
     /**
      * Contains information about regarding token1 fee volume and fee accumulation
      * for a specific pool.
@@ -75,7 +72,7 @@ contract DynamicFeeCalculator is IFeeCalculator {
     error CallerNotPositionManager();
 
     /// Maps our `PoolInfo` to each pool
-    mapping (PoolId _poolId => PoolInfo _poolInfo) public poolInfos;
+    mapping(PoolId _poolId => PoolInfo _poolInfo) public poolInfos;
 
     /// The {PositionManager} contract address
     address public immutable positionManager;
@@ -86,7 +83,9 @@ contract DynamicFeeCalculator is IFeeCalculator {
      *
      * @param _positionManager The address of our {PositionManager} contract
      */
-    constructor (address _positionManager) {
+    constructor(
+        address _positionManager
+    ) {
         positionManager = _positionManager;
     }
 
@@ -103,21 +102,18 @@ contract DynamicFeeCalculator is IFeeCalculator {
      */
     function determineSwapFee(
         PoolKey memory _poolKey,
-        IPoolManager.SwapParams memory /* _params */,
+        IPoolManager.SwapParams memory, /* _params */
         uint24 _baseFee
     ) public view returns (uint24 swapFee_) {
         PoolInfo memory poolInfo = poolInfos[_poolKey.toId()];
 
         // Get the current fee premium, reduced by the amount of time passed
-        uint feeDecrease = (block.timestamp - poolInfo.lastFeeDecreaseTime) / FEE_DECREASE_TIME_UNIT * FEE_DECREASE_PER_TIME_UNIT;
+        uint feeDecrease =
+            (block.timestamp - poolInfo.lastFeeDecreaseTime) / FEE_DECREASE_TIME_UNIT * FEE_DECREASE_PER_TIME_UNIT;
 
         // Get the current fee, either from the premium or the `baseFee`
-        swapFee_ = uint24(uint(
-            _max(
-                int(int24(poolInfo.currentFee)) - int(feeDecrease),
-                int(int24(_baseFee)) * 100
-            )
-        ) / 100);
+        swapFee_ =
+            uint24(uint(_max(int(int24(poolInfo.currentFee)) - int(feeDecrease), int(int24(_baseFee)) * 100)) / 100);
     }
 
     /**
@@ -128,9 +124,9 @@ contract DynamicFeeCalculator is IFeeCalculator {
      * @param _delta The amount owed to the caller (positive) or owed to the pool (negative)
      */
     function trackSwap(
-        address /* _sender */,
+        address, /* _sender */
         PoolKey calldata _key,
-        IPoolManager.SwapParams calldata /* _params */,
+        IPoolManager.SwapParams calldata, /* _params */
         BalanceDelta _delta,
         bytes calldata /* _hookData */
     ) public {
@@ -148,11 +144,13 @@ contract DynamicFeeCalculator is IFeeCalculator {
         }
 
         // Calculate the reduction of fees based on the last time that fee decreased
-        uint feeDecrease = ((block.timestamp - poolInfo.lastFeeDecreaseTime) / FEE_DECREASE_TIME_UNIT) * FEE_DECREASE_PER_TIME_UNIT;
+        uint feeDecrease =
+            ((block.timestamp - poolInfo.lastFeeDecreaseTime) / FEE_DECREASE_TIME_UNIT) * FEE_DECREASE_PER_TIME_UNIT;
         int feeChange = -int(feeDecrease);
 
         // Increase the number of captured tokens by the swap size
-        uint token1SoFar = poolInfo.token1SoFar + uint(int(_key.currency0 > _key.currency1 ? _delta.amount0() : _delta.amount1()));
+        uint token1SoFar =
+            poolInfo.token1SoFar + uint(int(_key.currency0 > _key.currency1 ? _delta.amount0() : _delta.amount1()));
 
         // Determine the fee increase
         uint feeIncrease = ((token1SoFar / FEE_INCREASE_TOKEN1_UNIT) * FEE_INCREASE_PER_TOKEN1_UNIT);
@@ -164,23 +162,15 @@ contract DynamicFeeCalculator is IFeeCalculator {
             // it happened.
             if (feeDecrease != 0) {
                 poolInfo.lastFeeDecreaseTime =
-                    poolInfo.lastFeeDecreaseTime +
-                    ((feeDecrease / FEE_DECREASE_PER_TIME_UNIT) * FEE_DECREASE_TIME_UNIT);
+                    poolInfo.lastFeeDecreaseTime + ((feeDecrease / FEE_DECREASE_PER_TIME_UNIT) * FEE_DECREASE_TIME_UNIT);
             }
 
             // Update the number of tokens taken so far
             poolInfo.token1SoFar = token1SoFar - (feeIncrease * FEE_INCREASE_TOKEN1_UNIT) / FEE_INCREASE_PER_TOKEN1_UNIT;
 
             // Calculate our new fee based on the min/max range
-            uint newFee = uint(
-                _max(
-                    _min(
-                        int(int24(poolInfo.currentFee)) + feeChange,
-                        int(MAXIMUM_FEE)
-                    ),
-                    int(MINIMUM_FEE)
-                )
-            );
+            uint newFee =
+                uint(_max(_min(int(int24(poolInfo.currentFee)) + feeChange, int(MAXIMUM_FEE)), int(MINIMUM_FEE)));
 
             // if the currentFee was at the MAXIMUM_FEE or MINIMUM_FEE, then even when abs(feeChange) > 0
             // the storage write might be avoided
@@ -211,5 +201,4 @@ contract DynamicFeeCalculator is IFeeCalculator {
     function _min(int _a, int _b) internal pure returns (int) {
         return _a < _b ? _a : _b;
     }
-
 }

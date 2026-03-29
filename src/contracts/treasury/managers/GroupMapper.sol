@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {ReentrancyGuardTransient} from '@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
-
 
 /**
  * Allows for hierarchical group ownership and fee distribution among groups.
@@ -17,7 +16,6 @@ import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFacto
  * 3. `Finalize` the deposit
  */
 contract GroupMapper is ReentrancyGuardTransient {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error InvalidGroupImplementation();
@@ -31,8 +29,12 @@ contract GroupMapper is ReentrancyGuardTransient {
     error NotValidCreator();
     error TimelockNotPassed();
 
-    event Claimed(address indexed _child, address indexed _caller, uint _parentFees, address indexed _owner, uint _ownerFees);
-    event Deposited(address indexed _child, address indexed _owner, address indexed _parent, uint _timelock, uint _parentShare);
+    event Claimed(
+        address indexed _child, address indexed _caller, uint _parentFees, address indexed _owner, uint _ownerFees
+    );
+    event Deposited(
+        address indexed _child, address indexed _owner, address indexed _parent, uint _timelock, uint _parentShare
+    );
     event DepositCancelled(address indexed _child, address indexed _owner, address indexed _parent);
     event DepositFinalized(address indexed _child);
     event Withdrawn(address indexed _child, address indexed _owner, address indexed _parent);
@@ -59,10 +61,10 @@ contract GroupMapper is ReentrancyGuardTransient {
     uint public constant MAX_PARENT_SHARE = 100_00000;
 
     /// Maps a group address to its group data
-    mapping (address _group => ChildGroup _data) public childGroups;
+    mapping(address _group => ChildGroup _data) public childGroups;
 
     /// Maps a group address to a list of child groups
-    mapping (address _parent => EnumerableSet.AddressSet _children) internal _childGroups;
+    mapping(address _parent => EnumerableSet.AddressSet _children) internal _childGroups;
 
     /// The factory contract that is used to create the groups
     ITreasuryManagerFactory public immutable treasuryManagerFactory;
@@ -72,7 +74,9 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @param _treasuryManagerFactory The factory contract that defines TreasuryManager implementations.
      */
-    constructor (ITreasuryManagerFactory _treasuryManagerFactory) {
+    constructor(
+        ITreasuryManagerFactory _treasuryManagerFactory
+    ) {
         treasuryManagerFactory = _treasuryManagerFactory;
     }
 
@@ -81,7 +85,8 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @dev This function does not support group types not referenced by the {TreasuryManagerFactory}.
      *
-     * @dev After the group has been deposited, the caller will then need to `transferManagerOwnership` to this contract. Once
+     * @dev After the group has been deposited, the caller will then need to `transferManagerOwnership` to this
+     * contract. Once
      * this has been done, the group can be finalized by calling the `finalize` function.
      *
      * @param _child The child group to deposit
@@ -139,7 +144,9 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @param _child The child group to withdraw
      */
-    function withdraw(address _child) public {
+    function withdraw(
+        address _child
+    ) public {
         // Load our ChildGroup into storage
         ChildGroup storage childGroup = childGroups[_child];
 
@@ -188,7 +195,9 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @return The child groups of the parent group
      */
-    function children(address _parent) public view returns (address[] memory) {
+    function children(
+        address _parent
+    ) public view returns (address[] memory) {
         return _childGroups[_parent].values();
     }
 
@@ -201,7 +210,9 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @param _child The child group to finalize
      */
-    function finalize(address _child) public {
+    function finalize(
+        address _child
+    ) public {
         // Load our ChildGroup into storage
         ChildGroup storage childGroup = childGroups[_child];
 
@@ -236,7 +247,9 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @return claimedFees_ The amount of fees claimed
      */
-    function claim(address _child) public nonReentrant returns (uint claimedFees_) {
+    function claim(
+        address _child
+    ) public nonReentrant returns (uint claimedFees_) {
         // Check that the group is deposited
         if (childGroups[_child].parent == address(0)) {
             revert GroupNotDeposited();
@@ -251,7 +264,9 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @return claimedFees_ The total amount of fees claimed
      */
-    function claimAll(address _parent) public nonReentrant returns (uint claimedFees_) {
+    function claimAll(
+        address _parent
+    ) public nonReentrant returns (uint claimedFees_) {
         // Get the child groups
         address[] memory _children = children(_parent);
         for (uint i = 0; i < _children.length; i++) {
@@ -266,7 +281,9 @@ contract GroupMapper is ReentrancyGuardTransient {
      *
      * @return claimedFees_ The amount of fees claimed
      */
-    function _claimFeesToParent(address _child) internal returns (uint claimedFees_) {
+    function _claimFeesToParent(
+        address _child
+    ) internal returns (uint claimedFees_) {
         // Claim the fees into this contract and transfer them to the parent group
         uint startBalance = address(this).balance;
         ITreasuryManager(_child).claim();
@@ -300,5 +317,4 @@ contract GroupMapper is ReentrancyGuardTransient {
      * Allows the contract to receive ETH from our owner claims.
      */
     receive() external payable {}
-
 }

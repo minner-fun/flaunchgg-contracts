@@ -5,10 +5,10 @@ import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet
 import {ReentrancyGuard} from '@solady/utils/ReentrancyGuard.sol';
 
 import {ManagerFeeEscrow} from '@flaunch/libraries/ManagerFeeEscrow.sol';
-import {TreasuryManager, ITreasuryManager} from '@flaunch/treasury/managers/TreasuryManager.sol';
+
 import {SupportsCreatorTokens} from '@flaunch/treasury/managers/SupportsCreatorTokens.sol';
 import {SupportsOwnerFees} from '@flaunch/treasury/managers/SupportsOwnerFees.sol';
-
+import {ITreasuryManager, TreasuryManager} from '@flaunch/treasury/managers/TreasuryManager.sol';
 
 /**
  * Allows tokens to be escrowed to allow multiple recipients to receive a share of the
@@ -17,8 +17,7 @@ import {SupportsOwnerFees} from '@flaunch/treasury/managers/SupportsOwnerFees.so
  * This contract has been built in an approach that should allow other contracts to inherit
  * it and determine how fees are split and spent.
  */
-abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, SupportsOwnerFees, ReentrancyGuard  {
-
+abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, SupportsOwnerFees, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
     error InvalidRecipient();
@@ -45,10 +44,13 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Sup
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      * @param _feeEscrowRegistry The {FeeEscrowRegistry} that will be used to withdraw fees
      */
-    constructor (address _treasuryManagerFactory, address _feeEscrowRegistry)
+    constructor(
+        address _treasuryManagerFactory,
+        address _feeEscrowRegistry
+    )
         TreasuryManager(_treasuryManagerFactory, _feeEscrowRegistry)
         SupportsCreatorTokens(_treasuryManagerFactory)
-        SupportsOwnerFees(_treasuryManagerFactory) 
+        SupportsOwnerFees(_treasuryManagerFactory)
     {
         // ..
     }
@@ -78,7 +80,11 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Sup
      * @param _creator The creator of the FlaunchToken
      * @param _data Additional deposit data for the manager
      */
-    function _deposit(FlaunchToken calldata _flaunchToken, address _creator, bytes calldata _data) internal virtual override {
+    function _deposit(
+        FlaunchToken calldata _flaunchToken,
+        address _creator,
+        bytes calldata _data
+    ) internal virtual override {
         _setCreatorToken(_flaunchToken, _creator, _data);
     }
 
@@ -93,7 +99,9 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Sup
      *
      * @return uint The amount of ETH available to claim by the `_recipient`
      */
-    function balances(address _recipient) public view virtual returns (uint) {
+    function balances(
+        address _recipient
+    ) public view virtual returns (uint) {
         return 0;
     }
 
@@ -196,7 +204,9 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Sup
      *
      * @return allocation_ The amount claimed from the call
      */
-    function _claim(bytes memory _data) internal nonReentrant returns (uint allocation_) {
+    function _claim(
+        bytes memory _data
+    ) internal nonReentrant returns (uint allocation_) {
         // Ensure that only a valid recipient can call this
         if (!isValidRecipient(msg.sender, _data)) {
             return 0;
@@ -227,7 +237,10 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Sup
      * @param _flaunchToken The flaunch token whose creator is being updated
      * @param _creator The new end-owner creator address
      */
-    function setCreator(ITreasuryManager.FlaunchToken calldata _flaunchToken, address payable _creator) public virtual onlyManagerOwner {
+    function setCreator(
+        ITreasuryManager.FlaunchToken calldata _flaunchToken,
+        address payable _creator
+    ) public virtual onlyManagerOwner {
         // Ensure that the creator is not a zero address
         if (_creator == address(0)) {
             revert InvalidCreatorAddress();
@@ -257,7 +270,7 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Sup
      * we need to add this to our claimable amounts. This allows us to receive ETH from external
      * sources that will also be distributed to our recipient split.
      */
-    receive () external override payable {
+    receive() external payable override {
         // If we have received fees from our FeeEscrow, then this should be handled as a claim
         // from the fee allocations of ERC721 tokens. This means that we allocate a portion of
         // this fee to the creators pool.
@@ -295,5 +308,4 @@ abstract contract FeeSplitManager is TreasuryManager, SupportsCreatorTokens, Sup
             emit ETHReceivedFromUnknownSource(msg.sender, msg.value - ownerFee);
         }
     }
-
 }

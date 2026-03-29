@@ -3,19 +3,18 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
+import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
+import {ReferralEscrow} from '@flaunch/escrows/ReferralEscrow.sol';
 import {FeeExemptions} from '@flaunch/hooks/FeeExemptions.sol';
 import {MemecoinFinder} from '@flaunch/types/MemecoinFinder.sol';
-import {ReferralEscrow} from '@flaunch/escrows/ReferralEscrow.sol';
-import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
 
-import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
-
+import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 
 /**
  * This hook will allow our pools to have a range of fee distribution approaches. This will
@@ -23,7 +22,6 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
  * 这个钩子将允许我们的池具有各种费用分配方法。如果池没有特定的费用分配，则回退到全局费用分配。
  */
 abstract contract FeeDistributor is Ownable {
-
     using MemecoinFinder for PoolKey;
     using PoolIdLibrary for PoolKey;
 
@@ -84,14 +82,14 @@ abstract contract FeeDistributor is Ownable {
 
     /// Maps the creators share of the fee distribution that can be set by the creator
     /// to reduce fees from hitting the bidwall. 映射创建者的费用分配，可以由创建者设置，以减少费用命中BidWall。
-    mapping (PoolId _poolId => uint24 _creatorFee) internal creatorFee; 
+    mapping(PoolId _poolId => uint24 _creatorFee) internal creatorFee;
 
     /// Maps individual pools to custom `FeeDistribution`s. These will overwrite the
     /// global `feeDistribution`. 映射单个池到自定义`FeeDistribution`s。这些将覆盖全局`feeDistribution`。
-    mapping (PoolId _poolId => FeeDistribution _feeDistribution) internal poolFeeDistribution;
+    mapping(PoolId _poolId => FeeDistribution _feeDistribution) internal poolFeeDistribution;
 
     /// Maps our IERC20 token addresses to their registered PoolKey 映射我们的IERC20代币地址到它们的注册PoolKey
-    mapping (address _memecoin => PoolKey _poolKey) internal _poolKeys;
+    mapping(address _memecoin => PoolKey _poolKey) internal _poolKeys;
 
     /// The global FeeDistribution that will be applied to all pools 全局FeeDistribution，将应用于所有池
     FeeDistribution internal feeDistribution;
@@ -106,7 +104,7 @@ abstract contract FeeDistributor is Ownable {
     IFeeCalculator public feeCalculator;
     IFeeCalculator public fairLaunchFeeCalculator;
 
-    /// Our internal native token   
+    /// Our internal native token
     address public nativeToken;
 
     /// The address of the $FLAY token's governance  $FLAY代币治理的地址
@@ -119,7 +117,13 @@ abstract contract FeeDistributor is Ownable {
      * @param _feeDistribution The initial FeeDistribution value
      * @param _protocolOwner The initial EOA owner of the contract
      */
-    constructor (address _nativeToken, FeeDistribution memory _feeDistribution, address _protocolOwner, address _flayGovernance, address _feeEscrow) {
+    constructor(
+        address _nativeToken,
+        FeeDistribution memory _feeDistribution,
+        address _protocolOwner,
+        address _flayGovernance,
+        address _feeEscrow
+    ) {
         nativeToken = _nativeToken;
 
         // Set our initial fee distribution 设置我们的初始费用分配
@@ -178,9 +182,7 @@ abstract contract FeeDistributor is Ownable {
         Currency _swapFeeCurrency,
         uint _swapAmount,
         FeeExemptions.FeeExemption memory _feeExemption
-    ) internal returns (
-        uint swapFee_
-    ) {
+    ) internal returns (uint swapFee_) {
         // If we have an empty swapAmount then we can exit early 如果我们没有交换金额，则可以提前退出
         if (_swapAmount == 0) {
             return swapFee_;
@@ -281,7 +283,10 @@ abstract contract FeeDistributor is Ownable {
      * @return creator_ The amount that the token creator will receive
      * @return protocol_ The amount that the protocol will receive
      */
-    function feeSplit(PoolId _poolId, uint _amount) public view returns (uint bidWall_, uint creator_, uint protocol_) {
+    function feeSplit(
+        PoolId _poolId,
+        uint _amount
+    ) public view returns (uint bidWall_, uint creator_, uint protocol_) {
         // Check if we have a pool overwrite for the FeeDistribution
         FeeDistribution memory _poolFeeDistribution = getPoolFeeDistribution(_poolId);
 
@@ -307,7 +312,9 @@ abstract contract FeeDistributor is Ownable {
      * 更新将存储推荐人费用的{ReferralEscrow}合同。
      * @param _referralEscrow The new {ReferralEscrow} contract address
      */
-    function setReferralEscrow(address payable _referralEscrow) public onlyOwner {
+    function setReferralEscrow(
+        address payable _referralEscrow
+    ) public onlyOwner {
         // Update our {ReferralEscrow} address
         referralEscrow = ReferralEscrow(_referralEscrow);
         emit ReferralEscrowUpdated(_referralEscrow);
@@ -318,7 +325,9 @@ abstract contract FeeDistributor is Ownable {
      * 允许治理合同对费用进行全局更改。
      * @param _feeDistribution The new FeeDistribution value
      */
-    function setFeeDistribution(FeeDistribution memory _feeDistribution) public onlyOwner {
+    function setFeeDistribution(
+        FeeDistribution memory _feeDistribution
+    ) public onlyOwner {
         _validateFeeDistribution(_feeDistribution);
 
         // Update our FeeDistribution struct
@@ -331,7 +340,9 @@ abstract contract FeeDistributor is Ownable {
      * 允许$FLAY代币治理设置全局协议费用。
      * @param _protocol New protocol fee
      */
-    function setProtocolFeeDistribution(uint24 _protocol) public {
+    function setProtocolFeeDistribution(
+        uint24 _protocol
+    ) public {
         // Check that the caller is the $FLAY governance
         if (msg.sender != flayGovernance) {
             revert Unauthorized();
@@ -368,7 +379,9 @@ abstract contract FeeDistributor is Ownable {
      * 如果结构体无效，则调用将被还原。
      * @param _feeDistribution The FeeDistribution to be validated
      */
-    function _validateFeeDistribution(FeeDistribution memory _feeDistribution) internal pure {
+    function _validateFeeDistribution(
+        FeeDistribution memory _feeDistribution
+    ) internal pure {
         // Ensure our swap fee is below 100%
         if (_feeDistribution.swapFee > ONE_HUNDRED_PERCENT) {
             revert SwapFeeInvalid();
@@ -390,7 +403,9 @@ abstract contract FeeDistributor is Ownable {
      * 允许所有者更新用于确定交换费用的{IFeeCalculator}。
      * @param _feeCalculator The new {IFeeCalculator} to use
      */
-    function setFeeCalculator(IFeeCalculator _feeCalculator) public onlyOwner {
+    function setFeeCalculator(
+        IFeeCalculator _feeCalculator
+    ) public onlyOwner {
         feeCalculator = _feeCalculator;
         emit FeeCalculatorUpdated(address(_feeCalculator));
     }
@@ -401,7 +416,9 @@ abstract contract FeeDistributor is Ownable {
      * 允许所有者更新用于在FairLaunch期间确定交换费用的{IFeeCalculator}。
      * @param _feeCalculator The new {IFeeCalculator} to use
      */
-    function setFairLaunchFeeCalculator(IFeeCalculator _feeCalculator) public onlyOwner {
+    function setFairLaunchFeeCalculator(
+        IFeeCalculator _feeCalculator
+    ) public onlyOwner {
         fairLaunchFeeCalculator = _feeCalculator;
         emit FairLaunchFeeCalculatorUpdated(address(_feeCalculator));
     }
@@ -414,7 +431,9 @@ abstract contract FeeDistributor is Ownable {
      *
      * @return feeDistribution_ The FeeDistribution applied to the pool
      */
-    function getPoolFeeDistribution(PoolId _poolId) public view returns (FeeDistribution memory feeDistribution_) {
+    function getPoolFeeDistribution(
+        PoolId _poolId
+    ) public view returns (FeeDistribution memory feeDistribution_) {
         feeDistribution_ = (poolFeeDistribution[_poolId].active) ? poolFeeDistribution[_poolId] : feeDistribution;
     }
 
@@ -428,7 +447,9 @@ abstract contract FeeDistributor is Ownable {
      * 如果池当前在FairLaunch
      * @return IFeeCalculator The IFeeCalculator to use
      */
-    function getFeeCalculator(bool _isFairLaunch) public view returns (IFeeCalculator) {
+    function getFeeCalculator(
+        bool _isFairLaunch
+    ) public view returns (IFeeCalculator) {
         if (_isFairLaunch && address(fairLaunchFeeCalculator) != address(0)) {
             return fairLaunchFeeCalculator;
         }
@@ -461,11 +482,9 @@ abstract contract FeeDistributor is Ownable {
         }
     }
 
-
     /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
      * 允许合同接收ETH，当从flETH代币中提取时。
      */
-    receive () external payable {}
-
+    receive() external payable {}
 }

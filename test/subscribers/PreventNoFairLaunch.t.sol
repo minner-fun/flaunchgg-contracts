@@ -6,12 +6,10 @@ import {PreventNoFairLaunch} from '@flaunch/subscribers/PreventNoFairLaunch.sol'
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract PreventNoFairLaunchTest is FlaunchTest {
-
     PreventNoFairLaunch internal preventNoFairLaunch;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
     }
@@ -26,11 +24,7 @@ contract PreventNoFairLaunchTest is FlaunchTest {
     ) public flipTokens(_flipped) {
         _registerSubscriber();
 
-        _initialTokenFairLaunch = bound(
-            _initialTokenFairLaunch,
-            preventNoFairLaunch.MINIMUM_INITIAL_TOKENS(),
-            69e27
-        );
+        _initialTokenFairLaunch = bound(_initialTokenFairLaunch, preventNoFairLaunch.MINIMUM_INITIAL_TOKENS(), 69e27);
 
         vm.assume(_premineAmount <= _initialTokenFairLaunch);
 
@@ -90,5 +84,4 @@ contract PreventNoFairLaunchTest is FlaunchTest {
         preventNoFairLaunch = new PreventNoFairLaunch(address(positionManager.notifier()));
         positionManager.notifier().subscribe(address(preventNoFairLaunch), '');
     }
-
 }

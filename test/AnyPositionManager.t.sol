@@ -3,12 +3,14 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {AnyFlaunch} from '@flaunch/AnyFlaunch.sol';
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
@@ -19,14 +21,12 @@ import {ERC20Mock} from 'test/tokens/ERC20Mock.sol';
 
 import {FlaunchTest} from './FlaunchTest.sol';
 
-
 contract AnyPositionManagerTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     address internal memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -35,7 +35,9 @@ contract AnyPositionManagerTest is FlaunchTest {
         ERC20Mock(memecoin).mint(address(this), 100_000 ether);
     }
 
-    function test_approveMemecoin_RevertsIfNotOwner(address _caller) public {
+    function test_approveMemecoin_RevertsIfNotOwner(
+        address _caller
+    ) public {
         vm.assume(_caller != anyPositionManager.owner());
 
         vm.expectRevert(UNAUTHORIZED);
@@ -417,11 +419,19 @@ contract AnyPositionManagerTest is FlaunchTest {
         anyFlaunch.burn(tokenId);
     }
 
-    function test_CannotFlaunchWithInvalidCreatorFeeAllocation(uint24 _creatorFeeAllocation) public {
+    function test_CannotFlaunchWithInvalidCreatorFeeAllocation(
+        uint24 _creatorFeeAllocation
+    ) public {
         vm.assume(_creatorFeeAllocation > 100_00);
         _approveCreator(address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(AnyFlaunch.CreatorFeeAllocationInvalid.selector, _creatorFeeAllocation, anyFlaunch.MAX_CREATOR_ALLOCATION()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AnyFlaunch.CreatorFeeAllocationInvalid.selector,
+                _creatorFeeAllocation,
+                anyFlaunch.MAX_CREATOR_ALLOCATION()
+            )
+        );
         anyPositionManager.flaunch(
             AnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
@@ -433,7 +443,9 @@ contract AnyPositionManagerTest is FlaunchTest {
         );
     }
 
-    function test_CanSwap(uint _seed) public {
+    function test_CanSwap(
+        uint _seed
+    ) public {
         _flaunch();
 
         // Ensure we have enough tokens for liquidity and approve them for our {PoolManager}
@@ -530,7 +542,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         PoolKey memory poolKey = anyPositionManager.poolKey(memecoin);
 
         anyBidWall.setDisabledState(poolKey, true);
-        (bool disabled, , , , , ) = anyBidWall.poolInfo(poolKey.toId());
+        (bool disabled,,,,,) = anyBidWall.poolInfo(poolKey.toId());
         assertEq(disabled, true);
     }
 
@@ -597,7 +609,9 @@ contract AnyPositionManagerTest is FlaunchTest {
         );
     }
 
-    function _approveCreator(address _creator) internal {
+    function _approveCreator(
+        address _creator
+    ) internal {
         anyPositionManager.approveCreator(_creator, true);
     }
 

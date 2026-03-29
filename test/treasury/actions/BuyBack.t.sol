@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
-import {BuyBackAction, ITreasuryAction} from '@flaunch/treasury/actions/BuyBack.sol';
-import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
+import {BuyBackAction, ITreasuryAction} from '@flaunch/treasury/actions/BuyBack.sol';
 
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
 import {FlaunchTest} from '../../FlaunchTest.sol';
 
-
 contract BuyBackActionTest is FlaunchTest {
-
     PoolKey poolKey;
     BuyBackAction action;
     MemecoinTreasury memecoinTreasury;
@@ -81,5 +79,4 @@ contract BuyBackActionTest is FlaunchTest {
 
         memecoinTreasury.executeAction(address(action), abi.encode(TickMath.MIN_SQRT_PRICE + 1));
     }
-
 }

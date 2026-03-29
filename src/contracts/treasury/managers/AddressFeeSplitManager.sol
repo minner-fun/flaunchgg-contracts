@@ -7,13 +7,11 @@ import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
 
 import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
 
-
 /**
  * Allows multiple recipient addresses to be allocated a share of the revenue earned from
  * memestreams held within the manager.
  */
 contract AddressFeeSplitManager is FeeSplitManager {
-
     using EnumerableSet for EnumerableSet.UintSet;
 
     error InsufficientSharesToTransfer();
@@ -49,10 +47,10 @@ contract AddressFeeSplitManager is FeeSplitManager {
     }
 
     /// Track the amount claimed for each recipient
-    mapping (address _recipient => uint _claimed) public amountClaimed;
+    mapping(address _recipient => uint _claimed) public amountClaimed;
 
     /// Stores the share initialized for each recipient
-    mapping (address _recipient => uint _share) internal _recipientShares;
+    mapping(address _recipient => uint _share) internal _recipientShares;
 
     /**
      * Sets up the contract with the initial required contract addresses.
@@ -60,7 +58,10 @@ contract AddressFeeSplitManager is FeeSplitManager {
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      * @param _feeEscrowRegistry The {FeeEscrowRegistry} that will be used to withdraw fees
      */
-    constructor (address _treasuryManagerFactory, address _feeEscrowRegistry) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
+    constructor(
+        address _treasuryManagerFactory,
+        address _feeEscrowRegistry
+    ) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
         // ..
     }
 
@@ -130,7 +131,9 @@ contract AddressFeeSplitManager is FeeSplitManager {
      *
      * @return balance_ The amount of ETH available to claim by the `_recipient`
      */
-    function balances(address _recipient) public view override returns (uint balance_) {
+    function balances(
+        address _recipient
+    ) public view override returns (uint balance_) {
         (uint shareBalance, uint creatorBalance, uint ownerBalance) = _balances(_recipient);
         balance_ = shareBalance + creatorBalance + ownerBalance;
     }
@@ -145,7 +148,9 @@ contract AddressFeeSplitManager is FeeSplitManager {
      * @return creatorBalance_ The balance available from creator fees
      * @return ownerBalance_ The balance available from owner fees
      */
-    function _balances(address _recipient) internal view returns (uint shareBalance_, uint creatorBalance_, uint ownerBalance_) {
+    function _balances(
+        address _recipient
+    ) internal view returns (uint shareBalance_, uint creatorBalance_, uint ownerBalance_) {
         // If the `_recipient` has been allocated a share, then we find the balance that
         // is available for them to claim.
         if (_recipientShares[_recipient] != 0) {
@@ -203,7 +208,8 @@ contract AddressFeeSplitManager is FeeSplitManager {
      * @return bool If the recipient is valid to receive an allocation
      */
     function isValidRecipient(address _recipient, bytes memory _data) public view override returns (bool) {
-        return _recipientShares[_recipient] != 0 || _creatorTokens[_recipient].length() != 0 || _recipient == managerOwner;
+        return
+            _recipientShares[_recipient] != 0 || _creatorTokens[_recipient].length() != 0 || _recipient == managerOwner;
     }
 
     /**
@@ -258,7 +264,9 @@ contract AddressFeeSplitManager is FeeSplitManager {
      *
      * @param _newRecipient The new owner of the recipient share
      */
-    function transferRecipientShare(address _newRecipient) public {
+    function transferRecipientShare(
+        address _newRecipient
+    ) public {
         // Don't allow the sender to transfer to themselves
         if (msg.sender == _newRecipient || _newRecipient == address(0)) {
             revert InvalidShareTransferRecipient();
@@ -297,5 +305,4 @@ contract AddressFeeSplitManager is FeeSplitManager {
             revert UnableToSendRevenue(data);
         }
     }
-
 }

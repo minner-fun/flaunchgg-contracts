@@ -6,12 +6,10 @@ import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
 import {ManagerFeeEscrow} from '@flaunch/libraries/ManagerFeeEscrow.sol';
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
 
-
 /**
  * Extends functionality to allow the manager to allocate fees to the manager owner.
  */
 abstract contract SupportsOwnerFees {
-
     error OwnerShareAlreadyInitialized();
     error InvalidOwnerShare();
 
@@ -40,7 +38,9 @@ abstract contract SupportsOwnerFees {
      *
      * @param treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      */
-    constructor (address treasuryManagerFactory) {
+    constructor(
+        address treasuryManagerFactory
+    ) {
         __treasuryManagerFactory = TreasuryManagerFactory(treasuryManagerFactory);
     }
 
@@ -49,7 +49,9 @@ abstract contract SupportsOwnerFees {
      *
      * @param _ownerShare The percentage that owners will receive from their fees (5dp)
      */
-    function _setOwnerShare(uint _ownerShare) internal {
+    function _setOwnerShare(
+        uint _ownerShare
+    ) internal {
         // Ensure that the owner share has not already been initialized
         if (_ownerShareInitialized) {
             revert OwnerShareAlreadyInitialized();
@@ -98,7 +100,7 @@ abstract contract SupportsOwnerFees {
 
     /**
      * Calculates the protocol fee that will be taken from the amount passed in.
-
+     *
      * @dev This function will always return a rounded down value.
      * @dev Uses FullMath for overflow protection and precision.
      *
@@ -106,7 +108,9 @@ abstract contract SupportsOwnerFees {
      *
      * @return ownerFee_ The owner fee to be taken from the amount
      */
-    function getOwnerFee(uint _amount) public view returns (uint ownerFee_) {
+    function getOwnerFee(
+        uint _amount
+    ) public view returns (uint ownerFee_) {
         // If the owner has no share, then we can exit early
         if (ownerShare == 0) {
             return 0;
@@ -114,5 +118,4 @@ abstract contract SupportsOwnerFees {
 
         return FullMath.mulDiv(_amount, ownerShare, MAX_OWNER_SHARE);
     }
-
 }

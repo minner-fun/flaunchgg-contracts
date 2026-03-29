@@ -10,9 +10,9 @@ import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManager
 
 import {IFeeEscrow} from '@flaunch-interfaces/IFeeEscrow.sol';
 import {IFeeEscrowRegistry} from '@flaunch-interfaces/IFeeEscrowRegistry.sol';
-import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
-import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
 
+import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
+import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 
 /**
  * Acts as a middleware for revenue claims, allowing external protocols to build on top of Flaunch
@@ -20,7 +20,6 @@ import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
  * 作为收入索赔的中间件，允许外部协议构建在Flaunch之上，并能够对产生的收入进行更细粒度的控制。
  */
 abstract contract TreasuryManager is ITreasuryManager {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error AlreadyInitialized();
@@ -56,27 +55,29 @@ abstract contract TreasuryManager is ITreasuryManager {
     bool public initialized;
 
     /// Creates a standardised timelock mechanism for tokens
-    mapping (address _flaunch => mapping (uint _tokenId => uint _unlockedAt)) public tokenTimelock;
+    mapping(address _flaunch => mapping(uint _tokenId => uint _unlockedAt)) public tokenTimelock;
 
     /**
      * Sets up the contract with the initial required contract addresses.
      * 设置合约的初始所需合约地址。
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      */
-    constructor (address _treasuryManagerFactory, address _feeEscrowRegistry) {
+    constructor(address _treasuryManagerFactory, address _feeEscrowRegistry) {
         feeEscrowRegistry = IFeeEscrowRegistry(_feeEscrowRegistry);
         treasuryManagerFactory = TreasuryManagerFactory(_treasuryManagerFactory);
     }
 
     /**
      * Initialize the manager contract.
-     * 
+     *
      * @param _owner The address to have ownership over the tokens
      * @param _data Additional manager initialization data
      */
     function initialize(address _owner, bytes calldata _data) public {
         // Check if the manager has already been initialized
-        if (initialized) revert AlreadyInitialized();
+        if (initialized) {
+            revert AlreadyInitialized();
+        }
 
         // Mark the manager as initialized
         initialized = true;
@@ -97,7 +98,9 @@ abstract contract TreasuryManager is ITreasuryManager {
      */
     function deposit(FlaunchToken calldata _flaunchToken, address _creator, bytes calldata _data) public {
         // Check if the manager has been initialized 检查管理器是否已初始化
-        if (!initialized) revert NotInitialized();
+        if (!initialized) {
+            revert NotInitialized();
+        }
 
         // Validate the Flaunch contract 验证Flaunch合约
         if (!_isValidFlaunchContract(address(_flaunchToken.flaunch))) {
@@ -109,7 +112,8 @@ abstract contract TreasuryManager is ITreasuryManager {
             revert InvalidCreator();
         }
 
-        // Transfer the token from the holder of the `FlaunchToken` to the contract. This will allow for approved tokens to
+        // Transfer the token from the holder of the `FlaunchToken` to the contract. This will allow for approved tokens
+        // to
         // or tokens held by the caller to be deposited.
         // 将代币从`FlaunchToken`的持有者转移到合约。这将允许批准的代币或调用者持有的代币被存入。
         _flaunchToken.flaunch.transferFrom({
@@ -182,7 +186,9 @@ abstract contract TreasuryManager is ITreasuryManager {
      *
      * @param _newManagerOwner The new address that will become the owner
      */
-    function transferManagerOwnership(address _newManagerOwner) public onlyManagerOwner {
+    function transferManagerOwnership(
+        address _newManagerOwner
+    ) public onlyManagerOwner {
         emit ManagerOwnershipTransferred(managerOwner, _newManagerOwner);
         managerOwner = _newManagerOwner;
     }
@@ -217,7 +223,9 @@ abstract contract TreasuryManager is ITreasuryManager {
      *
      * @param _permissions The new deposit permissions contract
      */
-    function setPermissions(address _permissions) public onlyManagerOwner {
+    function setPermissions(
+        address _permissions
+    ) public onlyManagerOwner {
         permissions = IManagerPermissions(_permissions);
         emit PermissionsUpdated(_permissions);
     }
@@ -229,7 +237,9 @@ abstract contract TreasuryManager is ITreasuryManager {
      *
      * @return `true` if the address is a valid Flaunch contract, `false` otherwise
      */
-    function _isValidFlaunchContract(address _flaunch) internal view returns (bool) {
+    function _isValidFlaunchContract(
+        address _flaunch
+    ) internal view returns (bool) {
         return treasuryManagerFactory.hasRole(ProtocolRoles.FLAUNCH, _flaunch);
     }
 
@@ -243,13 +253,16 @@ abstract contract TreasuryManager is ITreasuryManager {
      *
      * @return PoolId The PoolId for the FlaunchToken
      */
-    function _getFlaunchTokenPoolId(FlaunchToken calldata _flaunchToken) internal view returns (PoolId) {
-        return _flaunchToken.flaunch.positionManager().poolKey(_flaunchToken.flaunch.memecoin(_flaunchToken.tokenId)).toId();
+    function _getFlaunchTokenPoolId(
+        FlaunchToken calldata _flaunchToken
+    ) internal view returns (PoolId) {
+        return _flaunchToken.flaunch.positionManager().poolKey(_flaunchToken.flaunch.memecoin(_flaunchToken.tokenId))
+            .toId();
     }
 
     /**
      * Withdraws fees from all known sources.
-     * 
+     *
      * @param _recipient The recipient of the fees
      * @param _unwrap If we want to unwrap the balance from flETH into ETH
      */
@@ -263,7 +276,7 @@ abstract contract TreasuryManager is ITreasuryManager {
     /**
      * Allows for protected calls that only the manager owner can make.
      */
-    modifier onlyManagerOwner {
+    modifier onlyManagerOwner() {
         if (msg.sender != managerOwner) {
             revert NotManagerOwner();
         }
@@ -274,6 +287,5 @@ abstract contract TreasuryManager is ITreasuryManager {
     /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
      */
-    receive () external virtual payable {}
-
+    receive() external payable virtual {}
 }

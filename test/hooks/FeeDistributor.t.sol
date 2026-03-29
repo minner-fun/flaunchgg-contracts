@@ -3,28 +3,26 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {IPoolManager, PoolManager, Pool} from '@uniswap/v4-core/src/PoolManager.sol';
+import {IPoolManager, Pool, PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
+import {PositionManager} from '@flaunch/PositionManager.sol';
 import {BidWall} from '@flaunch/bidwall/BidWall.sol';
-import {FeeDistributor} from '@flaunch/hooks/FeeDistributor.sol';
 import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
+import {FeeDistributor} from '@flaunch/hooks/FeeDistributor.sol';
 import {FeeExemptions} from '@flaunch/hooks/FeeExemptions.sol';
 import {InternalSwapPool} from '@flaunch/hooks/InternalSwapPool.sol';
 import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
 
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
-import {PoolManagerMock} from '../mocks/PoolManagerMock.sol';
 import {FlaunchTest} from '../FlaunchTest.sol';
-
+import {PoolManagerMock} from '../mocks/PoolManagerMock.sol';
 
 contract FeeDistributorTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     // Set a test-wide pool key
@@ -33,12 +31,26 @@ contract FeeDistributorTest is FlaunchTest {
     // Store our memecoin created for the test
     address memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
         // Create our memecoin
-        memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 20_00, 0, abi.encode(''), abi.encode(1_000)));
+        memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                20_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         // Reference our `_poolKey` for later tests
         _poolKey = positionManager.poolKey(memecoin);
@@ -75,12 +87,7 @@ contract FeeDistributorTest is FlaunchTest {
 
         positionManager.setPoolFeeDistribution(
             _poolKey.toId(),
-            FeeDistributor.FeeDistribution({
-                swapFee: 50_00,
-                referrer: 15_00,
-                protocol: 5_00,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: 50_00, referrer: 15_00, protocol: 5_00, active: true})
         );
 
         (bidWall, creator, protocol) = positionManager.feeSplit(_poolKey.toId(), 100);
@@ -105,12 +112,14 @@ contract FeeDistributorTest is FlaunchTest {
         testMatrix[5] = _validFeeDistributionMatrix(12, 34_56, 7_50);
 
         for (uint i; i < testMatrix.length; ++i) {
-            positionManager.setFeeDistribution(FeeDistributor.FeeDistribution({
-                swapFee: _swapFee,
-                referrer: _referrer,
-                protocol: testMatrix[i][2],
-                active: true
-            }));
+            positionManager.setFeeDistribution(
+                FeeDistributor.FeeDistribution({
+                    swapFee: _swapFee,
+                    referrer: _referrer,
+                    protocol: testMatrix[i][2],
+                    active: true
+                })
+            );
         }
     }
 
@@ -118,38 +127,33 @@ contract FeeDistributorTest is FlaunchTest {
         vm.startPrank(address(1));
         vm.expectRevert(UNAUTHORIZED);
 
-        positionManager.setFeeDistribution(FeeDistributor.FeeDistribution({
-            swapFee: 1_00,
-            referrer: 5_00,
-            protocol: 10_00,
-            active: true
-        }));
+        positionManager.setFeeDistribution(
+            FeeDistributor.FeeDistribution({swapFee: 1_00, referrer: 5_00, protocol: 10_00, active: true})
+        );
 
         vm.stopPrank();
     }
 
-    function test_CannotSetFeeDistributionWithInvalidSwapFee(uint24 _swapFee) public {
+    function test_CannotSetFeeDistributionWithInvalidSwapFee(
+        uint24 _swapFee
+    ) public {
         vm.assume(_swapFee > 100_00);
 
         vm.expectRevert(FeeDistributor.SwapFeeInvalid.selector);
-        positionManager.setFeeDistribution(FeeDistributor.FeeDistribution({
-            swapFee: _swapFee,
-            referrer: 5_00,
-            protocol: 10_00,
-            active: true
-        }));
+        positionManager.setFeeDistribution(
+            FeeDistributor.FeeDistribution({swapFee: _swapFee, referrer: 5_00, protocol: 10_00, active: true})
+        );
     }
 
-    function test_CannotSetFeeDistributionWithInvalidReferrerFee(uint24 _referrerFee) public {
+    function test_CannotSetFeeDistributionWithInvalidReferrerFee(
+        uint24 _referrerFee
+    ) public {
         vm.assume(_referrerFee > 100_00);
 
         vm.expectRevert(FeeDistributor.ReferrerFeeInvalid.selector);
-        positionManager.setFeeDistribution(FeeDistributor.FeeDistribution({
-            swapFee: 1_00,
-            referrer: _referrerFee,
-            protocol: 10_00,
-            active: true
-        }));
+        positionManager.setFeeDistribution(
+            FeeDistributor.FeeDistribution({swapFee: 1_00, referrer: _referrerFee, protocol: 10_00, active: true})
+        );
     }
 
     function test_CanSetPoolFeeDistribution(uint24 _swapFee, uint24 _referrer) public {
@@ -186,59 +190,45 @@ contract FeeDistributorTest is FlaunchTest {
 
         positionManager.setPoolFeeDistribution(
             _poolKey.toId(),
-            FeeDistributor.FeeDistribution({
-                swapFee: 1_00,
-                referrer: 5_00,
-                protocol: 30_00,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: 1_00, referrer: 5_00, protocol: 30_00, active: true})
         );
 
         vm.stopPrank();
     }
 
-    function test_CannotSetPoolFeeDistributionWithInvalidSwapFee(uint24 _swapFee) public {
+    function test_CannotSetPoolFeeDistributionWithInvalidSwapFee(
+        uint24 _swapFee
+    ) public {
         vm.assume(_swapFee > 100_00);
 
         vm.expectRevert(FeeDistributor.SwapFeeInvalid.selector);
         positionManager.setPoolFeeDistribution(
             _poolKey.toId(),
-            FeeDistributor.FeeDistribution({
-                swapFee: _swapFee,
-                referrer: 5_00,
-                protocol: 30_00,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: _swapFee, referrer: 5_00, protocol: 30_00, active: true})
         );
     }
 
-    function test_CannotSetPoolFeeDistributionWithInvalidReferrerFee(uint24 _referrerFee) public {
+    function test_CannotSetPoolFeeDistributionWithInvalidReferrerFee(
+        uint24 _referrerFee
+    ) public {
         vm.assume(_referrerFee > 100_00);
 
         vm.expectRevert(FeeDistributor.ReferrerFeeInvalid.selector);
         positionManager.setPoolFeeDistribution(
             _poolKey.toId(),
-            FeeDistributor.FeeDistribution({
-                swapFee: 1_00,
-                referrer: _referrerFee,
-                protocol: 30_00,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: 1_00, referrer: _referrerFee, protocol: 30_00, active: true})
         );
     }
 
-    function test_CannotSetPoolFeeDistributionWithInvalidProtocolFee(uint24 _protocolFee) public {
+    function test_CannotSetPoolFeeDistributionWithInvalidProtocolFee(
+        uint24 _protocolFee
+    ) public {
         vm.assume(_protocolFee > 10_00);
 
         vm.expectRevert(FeeDistributor.ProtocolFeeInvalid.selector);
         positionManager.setPoolFeeDistribution(
             _poolKey.toId(),
-            FeeDistributor.FeeDistribution({
-                swapFee: 1_00,
-                referrer: 5_00,
-                protocol: _protocolFee,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: 1_00, referrer: 5_00, protocol: _protocolFee, active: true})
         );
     }
 
@@ -271,19 +261,25 @@ contract FeeDistributorTest is FlaunchTest {
         // Withdraw the fees for our recipient, confirming our event is fired and that
         // they have successfully received their token.
         vm.expectEmit();
-        emit FeeEscrow.Withdrawal(_sender, _recipient, (_unwrap) ? address(0) : positionManager.getNativeToken(), _amount * 2);
+        emit FeeEscrow.Withdrawal(
+            _sender, _recipient, (_unwrap) ? address(0) : positionManager.getNativeToken(), _amount * 2
+        );
         positionManager.feeEscrow().withdrawFees(_recipient, _unwrap);
 
         if (_unwrap) {
             assertEq(payable(_recipient).balance, _amount * 2, 'Invalid recipient ETH');
         } else {
-            assertEq(IERC20(positionManager.getNativeToken()).balanceOf(_recipient), _amount * 2, 'Invalid recipient flETH');
+            assertEq(
+                IERC20(positionManager.getNativeToken()).balanceOf(_recipient), _amount * 2, 'Invalid recipient flETH'
+            );
         }
 
         vm.stopPrank();
     }
 
-    function test_CanAllocateAndWithdrawFeesWithZeroAmount(bool _unwrap) public {
+    function test_CanAllocateAndWithdrawFeesWithZeroAmount(
+        bool _unwrap
+    ) public {
         address recipient = makeAddr('test_CanAllocateAndWithdrawFeesWithZeroAmount');
 
         _allocateFees(_poolKey.toId(), recipient, 0);
@@ -297,7 +293,9 @@ contract FeeDistributorTest is FlaunchTest {
         _allocateFees(_poolKey.toId(), address(0), 1);
     }
 
-    function test_CanCaptureSwapFees_ZeroForOne_ExactInput(address _referrer) public {
+    function test_CanCaptureSwapFees_ZeroForOne_ExactInput(
+        address _referrer
+    ) public {
         // Assume our referrer doesn't clash with other addresses
         _assumeValidReferrer(_referrer);
 
@@ -309,32 +307,46 @@ contract FeeDistributorTest is FlaunchTest {
         _processSwap(true, -3 ether, _referrer);
 
         // Get the expected cost and fees (from the PoolSwap event)
-        uint expectedTokens = 5.980976000725637630 ether; // uniAmount1
-        uint expectedFees   = 0.059809760007256376 ether; // uniFee1
+        uint expectedTokens = 5.98097600072563763 ether; // uniAmount1
+        uint expectedFees = 0.059809760007256376 ether; // uniFee1
 
         uint referrerFee;
         if (_referrer != address(0)) {
             referrerFee = expectedFees * 5 / 100;
 
             assertEq(referralEscrow.allocations(_referrer, address(WETH)), 0, 'Invalid closing referrer ETH balance');
-            assertEq(referralEscrow.allocations(_referrer, memecoin), referrerFee, 'Invalid closing referrer token balance');
+            assertEq(
+                referralEscrow.allocations(_referrer, memecoin), referrerFee, 'Invalid closing referrer token balance'
+            );
         }
 
         InternalSwapPool.ClaimableFees memory fees = positionManager.poolFees(_poolKey);
         assertEq(fees.amount0, 0, 'Incorrect closing pool ETH fees');
         assertEq(fees.amount1, expectedFees - referrerFee, 'Incorrect closing pool token1 fees');
 
-        assertEq(WETH.balanceOf(address(poolManager)), poolManagerEth + 3 ether, 'Invalid closing poolManager ETH balance');
+        assertEq(
+            WETH.balanceOf(address(poolManager)), poolManagerEth + 3 ether, 'Invalid closing poolManager ETH balance'
+        );
         assertEq(WETH.balanceOf(address(positionManager)), 0, 'Invalid closing positionManager ETH balance');
 
         assertEq(WETH.balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow ETH balance');
-        assertEq(IERC20(memecoin).balanceOf(address(referralEscrow)), referrerFee, 'Invalid closing referralEscrow memecoin balance');
+        assertEq(
+            IERC20(memecoin).balanceOf(address(referralEscrow)),
+            referrerFee,
+            'Invalid closing referralEscrow memecoin balance'
+        );
 
         assertEq(WETH.balanceOf(address(this)), 100 ether - 3 ether, 'Invalid closing user ETH balance');
-        assertEq(IERC20(memecoin).balanceOf(address(this)), 100 ether + expectedTokens - expectedFees, 'Invalid closing user token balance');
+        assertEq(
+            IERC20(memecoin).balanceOf(address(this)),
+            100 ether + expectedTokens - expectedFees,
+            'Invalid closing user token balance'
+        );
     }
 
-    function test_CanCaptureSwapFees_ZeroForOne_ExactOutput(address _referrer) public {
+    function test_CanCaptureSwapFees_ZeroForOne_ExactOutput(
+        address _referrer
+    ) public {
         // Assume our referrer doesn't clash with other addresses
         _assumeValidReferrer(_referrer);
 
@@ -353,7 +365,11 @@ contract FeeDistributorTest is FlaunchTest {
         if (_referrer != address(0)) {
             referrerFee = expectedFees * 5 / 100;
 
-            assertEq(referralEscrow.allocations(_referrer, address(WETH)), referrerFee, 'Invalid closing referrer ETH balance');
+            assertEq(
+                referralEscrow.allocations(_referrer, address(WETH)),
+                referrerFee,
+                'Invalid closing referrer ETH balance'
+            );
             assertEq(referralEscrow.allocations(_referrer, memecoin), 0, 'Invalid closing referrer token balance');
         }
 
@@ -361,18 +377,27 @@ contract FeeDistributorTest is FlaunchTest {
         assertEq(fees.amount0, 0, 'Incorrect closing pool ETH fees');
         assertEq(fees.amount1, 0, 'Incorrect closing pool token1 fees');
 
-        assertEq(WETH.balanceOf(address(poolManager)), poolManagerEth + expectedCost, 'Invalid closing poolManager ETH balance');
+        assertEq(
+            WETH.balanceOf(address(poolManager)),
+            poolManagerEth + expectedCost,
+            'Invalid closing poolManager ETH balance'
+        );
 
         assertEq(WETH.balanceOf(address(referralEscrow)), referrerFee, 'Invalid closing referralEscrow ETH balance');
-        assertEq(IERC20(memecoin).balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow memecoin balance');
-
+        assertEq(
+            IERC20(memecoin).balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow memecoin balance'
+        );
 
         // Our user is set to a static 100 ether of eth and tokens in the `_processSwap` call
-        assertEq(WETH.balanceOf(address(this)), 100 ether - expectedCost - expectedFees, 'Invalid closing user ETH balance');
+        assertEq(
+            WETH.balanceOf(address(this)), 100 ether - expectedCost - expectedFees, 'Invalid closing user ETH balance'
+        );
         assertEq(IERC20(memecoin).balanceOf(address(this)), 100 ether + 3 ether, 'Invalid closing user token balance');
     }
 
-    function test_CanCaptureSwapFees_OneForZero_ExactInput(address _referrer) public {
+    function test_CanCaptureSwapFees_OneForZero_ExactInput(
+        address _referrer
+    ) public {
         // Assume our referrer doesn't clash with other addresses
         _assumeValidReferrer(_referrer);
 
@@ -389,7 +414,11 @@ contract FeeDistributorTest is FlaunchTest {
         if (_referrer != address(0)) {
             referrerFee = expectedFees * 5 / 100;
 
-            assertEq(referralEscrow.allocations(_referrer, address(WETH)), referrerFee, 'Invalid closing referrer ETH balance');
+            assertEq(
+                referralEscrow.allocations(_referrer, address(WETH)),
+                referrerFee,
+                'Invalid closing referrer ETH balance'
+            );
             assertEq(referralEscrow.allocations(_referrer, memecoin), 0, 'Invalid closing referrer token balance');
         }
 
@@ -397,17 +426,27 @@ contract FeeDistributorTest is FlaunchTest {
         assertEq(fees.amount0, 0, 'Incorrect closing pool ETH fees');
         assertEq(fees.amount1, 0, 'Incorrect closing pool token1 fees');
 
-        assertEq(WETH.balanceOf(address(poolManager)), poolManagerEth - expectedTokens, 'Invalid closing poolManager ETH balance');
+        assertEq(
+            WETH.balanceOf(address(poolManager)),
+            poolManagerEth - expectedTokens,
+            'Invalid closing poolManager ETH balance'
+        );
 
         assertEq(WETH.balanceOf(address(referralEscrow)), referrerFee, 'Invalid closing referralEscrow ETH balance');
-        assertEq(IERC20(memecoin).balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow memecoin balance');
+        assertEq(
+            IERC20(memecoin).balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow memecoin balance'
+        );
 
         // Our user is set to a static 100 ether of eth and tokens in the `_processSwap` call
-        assertEq(WETH.balanceOf(address(this)), 100 ether + expectedTokens - expectedFees, 'Invalid closing user ETH balance');
+        assertEq(
+            WETH.balanceOf(address(this)), 100 ether + expectedTokens - expectedFees, 'Invalid closing user ETH balance'
+        );
         assertEq(IERC20(memecoin).balanceOf(address(this)), 100 ether - 3 ether, 'Invalid closing user token balance');
     }
 
-    function test_CanCaptureSwapFees_OneForZero_ExactOutput(address _referrer) public {
+    function test_CanCaptureSwapFees_OneForZero_ExactOutput(
+        address _referrer
+    ) public {
         // Assume our referrer doesn't clash with other addresses
         _assumeValidReferrer(_referrer);
 
@@ -417,30 +456,42 @@ contract FeeDistributorTest is FlaunchTest {
 
         _processSwap(false, 3 ether, _referrer);
 
-        uint expectedCost = 10.421444405209233040 ether;
-        uint expectedFees = 0.104214444052092330 ether;
+        uint expectedCost = 10.42144440520923304 ether;
+        uint expectedFees = 0.10421444405209233 ether;
 
         uint referrerFee;
         if (_referrer != address(0)) {
             referrerFee = expectedFees * 5 / 100;
 
             assertEq(referralEscrow.allocations(_referrer, address(WETH)), 0, 'Invalid closing referrer ETH balance');
-            assertEq(referralEscrow.allocations(_referrer, memecoin), referrerFee, 'Invalid closing referrer token balance');
+            assertEq(
+                referralEscrow.allocations(_referrer, memecoin), referrerFee, 'Invalid closing referrer token balance'
+            );
         }
 
         InternalSwapPool.ClaimableFees memory fees = positionManager.poolFees(_poolKey);
         assertEq(fees.amount0, 0, 'Incorrect closing pool ETH fees');
         assertEq(fees.amount1, expectedFees - referrerFee, 'Incorrect closing pool token1 fees');
 
-        assertEq(WETH.balanceOf(address(poolManager)), poolManagerEth - 3 ether, 'Invalid closing poolManager ETH balance');
+        assertEq(
+            WETH.balanceOf(address(poolManager)), poolManagerEth - 3 ether, 'Invalid closing poolManager ETH balance'
+        );
         assertEq(WETH.balanceOf(address(positionManager)), 0, 'Invalid closing positionManager ETH balance');
 
         assertEq(WETH.balanceOf(address(referralEscrow)), 0, 'Invalid closing referralEscrow ETH balance');
-        assertEq(IERC20(memecoin).balanceOf(address(referralEscrow)), referrerFee, 'Invalid closing referralEscrow memecoin balance');
+        assertEq(
+            IERC20(memecoin).balanceOf(address(referralEscrow)),
+            referrerFee,
+            'Invalid closing referralEscrow memecoin balance'
+        );
 
         // Our user is set to a static 100 ether of eth and tokens in the `_processSwap` call
         assertEq(WETH.balanceOf(address(this)), 100 ether + 3 ether, 'Invalid closing user ETH balance');
-        assertEq(IERC20(memecoin).balanceOf(address(this)), 100 ether - expectedCost - expectedFees, 'Invalid closing user token balance');
+        assertEq(
+            IERC20(memecoin).balanceOf(address(this)),
+            100 ether - expectedCost - expectedFees,
+            'Invalid closing user token balance'
+        );
     }
 
     function test_CanReceiveReferrerRewardsFromInternalSwapPool() public {
@@ -459,13 +510,15 @@ contract FeeDistributorTest is FlaunchTest {
         // These are the total amount of fees accumulated from the swap. From these values we will
         // then need to find 5% to return the actual fees received by the referrer.
         uint internalFees = 0.005380455668937963 ether;
-        uint uniswapFees  = 0.010031688214553679 ether;
+        uint uniswapFees = 0.010031688214553679 ether;
 
         // Calculate the amount of fees that a referrer would receive (5% of swap fees). The
         // manipulation of "1" is to accommodate rounding issues.
         uint referrerFees = ((internalFees + uniswapFees) / 100) * 5 + 1;
 
-        assertEq(referralEscrow.allocations(_referrer, address(WETH)), referrerFees, 'Invalid closing referrer ETH balance');
+        assertEq(
+            referralEscrow.allocations(_referrer, address(WETH)), referrerFees, 'Invalid closing referrer ETH balance'
+        );
         assertEq(referralEscrow.allocations(_referrer, memecoin), 0, 'Invalid closing referrer token balance');
     }
 
@@ -478,17 +531,17 @@ contract FeeDistributorTest is FlaunchTest {
 
         // Set our default fee position at 0%
         positionManager.setFeeDistribution(
-            FeeDistributor.FeeDistribution({
-                swapFee: 0,
-                referrer: 5_00,
-                protocol: 10_00,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: 0, referrer: 5_00, protocol: 10_00, active: true})
         );
 
         // Capture 1 token
         swapFee = positionManager.captureSwapFees(
-            IPoolManager(_poolManager), _poolKey, _getSwapParams(1 ether), Currency.wrap(memecoin), 1 ether, _noFeeExemption()
+            IPoolManager(_poolManager),
+            _poolKey,
+            _getSwapParams(1 ether),
+            Currency.wrap(memecoin),
+            1 ether,
+            _noFeeExemption()
         );
 
         // We should receive 1 token with 0% fee applied
@@ -496,17 +549,17 @@ contract FeeDistributorTest is FlaunchTest {
 
         // Set our default fee position at 1%
         positionManager.setFeeDistribution(
-            FeeDistributor.FeeDistribution({
-                swapFee: 1_00,
-                referrer: 5_00,
-                protocol: 10_00,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: 1_00, referrer: 5_00, protocol: 10_00, active: true})
         );
 
         // Capture 1 token
         swapFee = positionManager.captureSwapFees(
-            IPoolManager(_poolManager), _poolKey, _getSwapParams(1 ether), Currency.wrap(memecoin), 1 ether, _noFeeExemption()
+            IPoolManager(_poolManager),
+            _poolKey,
+            _getSwapParams(1 ether),
+            Currency.wrap(memecoin),
+            1 ether,
+            _noFeeExemption()
         );
 
         // We should receive 1 token with 1% fee applied
@@ -514,18 +567,17 @@ contract FeeDistributorTest is FlaunchTest {
 
         // Set our pool fee position at 0%
         positionManager.setPoolFeeDistribution(
-            _poolKey.toId(),
-            FeeDistributor.FeeDistribution({
-                swapFee: 0,
-                referrer: 5_00,
-                protocol: 10_00,
-                active: true
-            })
+            _poolKey.toId(), FeeDistributor.FeeDistribution({swapFee: 0, referrer: 5_00, protocol: 10_00, active: true})
         );
 
         // Capture 1 token
         swapFee = positionManager.captureSwapFees(
-            IPoolManager(_poolManager), _poolKey, _getSwapParams(1 ether), Currency.wrap(memecoin), 1 ether, _noFeeExemption()
+            IPoolManager(_poolManager),
+            _poolKey,
+            _getSwapParams(1 ether),
+            Currency.wrap(memecoin),
+            1 ether,
+            _noFeeExemption()
         );
 
         // We should receive 1 token with 0% fee applied
@@ -534,17 +586,17 @@ contract FeeDistributorTest is FlaunchTest {
         // Set our pool fee position at 0.5%
         positionManager.setPoolFeeDistribution(
             _poolKey.toId(),
-            FeeDistributor.FeeDistribution({
-                swapFee: 50,
-                referrer: 5_00,
-                protocol: 10_00,
-                active: true
-            })
+            FeeDistributor.FeeDistribution({swapFee: 50, referrer: 5_00, protocol: 10_00, active: true})
         );
 
         // Capture 1 token
         swapFee = positionManager.captureSwapFees(
-            IPoolManager(_poolManager), _poolKey, _getSwapParams(1 ether), Currency.wrap(memecoin), 1 ether, _noFeeExemption()
+            IPoolManager(_poolManager),
+            _poolKey,
+            _getSwapParams(1 ether),
+            Currency.wrap(memecoin),
+            1 ether,
+            _noFeeExemption()
         );
 
         // We should receive 1 token with 0.5% fee applied
@@ -564,7 +616,9 @@ contract FeeDistributorTest is FlaunchTest {
         assertEq(swapFee, 0.0025 ether, 'global -> pool -> overwrite -> 0.25%');
     }
 
-    function test_CanSetProtocolFeeDistributionAsGovernance(uint24 _protocol) public {
+    function test_CanSetProtocolFeeDistributionAsGovernance(
+        uint24 _protocol
+    ) public {
         // Ensure _protocol is in valid range using fuzzing
         vm.assume(_protocol <= 10_00);
 
@@ -591,7 +645,9 @@ contract FeeDistributorTest is FlaunchTest {
         assertEq(feeDistribution.protocol, _protocol);
     }
 
-    function test_CannotSetProtocolFeeDistributionAsNonGovernance(uint24 _protocol) public {
+    function test_CannotSetProtocolFeeDistributionAsNonGovernance(
+        uint24 _protocol
+    ) public {
         // Ensure _protocol is in valid range
         vm.assume(_protocol < 10_00);
 
@@ -605,7 +661,9 @@ contract FeeDistributorTest is FlaunchTest {
         positionManager.setProtocolFeeDistribution(_protocol);
     }
 
-    function test_CannotSetInvalidProtocolFee(uint24 _protocol) public {
+    function test_CannotSetInvalidProtocolFee(
+        uint24 _protocol
+    ) public {
         // Ensure _protocol is out of the valid range (>= 10_00)
         vm.assume(_protocol > 10_00);
 
@@ -619,7 +677,9 @@ contract FeeDistributorTest is FlaunchTest {
         positionManager.setProtocolFeeDistribution(_protocol);
     }
 
-    function test_CannotSetInvalidProtocolFeeFromNonGovernance(uint24 _protocol) public {
+    function test_CannotSetInvalidProtocolFeeFromNonGovernance(
+        uint24 _protocol
+    ) public {
         // Ensure _protocol is out of the valid range (>= 10_00)
         vm.assume(_protocol >= 10_00);
 
@@ -633,7 +693,9 @@ contract FeeDistributorTest is FlaunchTest {
         positionManager.setProtocolFeeDistribution(_protocol);
     }
 
-    function test_CanGetProtocolFeeEventEmission(uint24 _protocol) public {
+    function test_CanGetProtocolFeeEventEmission(
+        uint24 _protocol
+    ) public {
         // Ensure _protocol is in valid range
         vm.assume(_protocol < 10_00);
 
@@ -674,11 +736,7 @@ contract FeeDistributorTest is FlaunchTest {
         assertEq(IMemecoin(memecoin).creator(), address(0));
 
         // Prevent BidWall.deposit, as this will require the PositionManager to be unlocked
-        vm.mockCall(
-            address(positionManager.bidWall()),
-            abi.encodeWithSelector(BidWall.deposit.selector),
-            abi.encode(0)
-        );
+        vm.mockCall(address(positionManager.bidWall()), abi.encodeWithSelector(BidWall.deposit.selector), abi.encode(0));
 
         // Deposit some fees ready to distribute
         deal(address(WETH), address(positionManager), 1 ether);
@@ -692,7 +750,9 @@ contract FeeDistributorTest is FlaunchTest {
      * Test that passes a referrer and confirm the fees are correctly allocated against the
      * balance in the ISP.
      */
-    function test_CanHandleReferrerFeeOffsetInSwap(address _referrer) public {
+    function test_CanHandleReferrerFeeOffsetInSwap(
+        address _referrer
+    ) public {
         // Assume our referrer doesn't clash with other addresses
         _assumeValidReferrer(_referrer);
 
@@ -748,14 +808,20 @@ contract FeeDistributorTest is FlaunchTest {
         feeEscrow.allocateFees(_poolId, _sender, _amount);
     }
 
-    function _validFeeDistributionMatrix(uint24 _bidWall, uint24 _creator, uint24 _protocol) internal pure returns (uint24[] memory feeDisibution_) {
+    function _validFeeDistributionMatrix(
+        uint24 _bidWall,
+        uint24 _creator,
+        uint24 _protocol
+    ) internal pure returns (uint24[] memory feeDisibution_) {
         feeDisibution_ = new uint24[](3);
         feeDisibution_[0] = _bidWall;
         feeDisibution_[1] = _creator;
         feeDisibution_[2] = _protocol;
     }
 
-    function _assumeValidReferrer(address _referrer) internal view {
+    function _assumeValidReferrer(
+        address _referrer
+    ) internal view {
         vm.assume(_referrer != address(0));
         vm.assume(_referrer != address(poolManager));
         vm.assume(_referrer != address(positionManager));
@@ -765,5 +831,4 @@ contract FeeDistributorTest is FlaunchTest {
     function _noFeeExemption() internal pure returns (FeeExemptions.FeeExemption memory) {
         return FeeExemptions.FeeExemption(0, false);
     }
-
 }

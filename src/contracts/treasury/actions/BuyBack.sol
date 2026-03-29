@@ -3,9 +3,9 @@ pragma solidity ^0.8.26;
 
 import {SafeCastLib} from '@solady/utils/SafeCastLib.sol';
 
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
@@ -13,12 +13,10 @@ import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
 
-
 /**
  * Spends native token to buy non-native tokens from the pool.
  */
 contract BuyBackAction is ITreasuryAction {
-
     using SafeCastLib for uint;
 
     /// The native token used by the Flaunch {PositionManager}
@@ -33,7 +31,7 @@ contract BuyBackAction is ITreasuryAction {
      * @param _nativeToken The ERC20 native token
      * @param _poolSwap The PoolSwap contract to action the buy-back swaps
      */
-    constructor (address _nativeToken, address _poolSwap) {
+    constructor(address _nativeToken, address _poolSwap) {
         nativeToken = Currency.wrap(_nativeToken);
         poolSwap = PoolSwap(_poolSwap);
     }
@@ -48,7 +46,9 @@ contract BuyBackAction is ITreasuryAction {
     function execute(PoolKey memory _poolKey, bytes memory _data) external override {
         // Capture the amount of native token held by the sender
         uint amountSpecified = nativeToken.balanceOf(msg.sender);
-        if (amountSpecified == 0) return;
+        if (amountSpecified == 0) {
+            return;
+        }
 
         // Decode the `sqrtPriceLimitX96` from our `_data`
         (uint160 sqrtPriceLimitX96) = abi.decode(_data, (uint160));
@@ -74,5 +74,4 @@ contract BuyBackAction is ITreasuryAction {
 
         emit ActionExecuted(_poolKey, delta.amount0(), delta.amount1());
     }
-
 }

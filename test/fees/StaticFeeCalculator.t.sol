@@ -12,9 +12,7 @@ import {StaticFeeCalculator} from '@flaunch/fees/StaticFeeCalculator.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract StaticFeeCalculatorTest is FlaunchTest {
-
     address internal constant POSITION_MANAGER = address(10);
 
     StaticFeeCalculator feeCalculator;
@@ -55,5 +53,4 @@ contract StaticFeeCalculatorTest is FlaunchTest {
             ''
         );
     }
-
 }

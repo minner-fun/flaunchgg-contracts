@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {IERC7802, IERC165} from '@optimism/interfaces/L2/IERC7802.sol';
+import {IERC165, IERC7802} from '@optimism/interfaces/L2/IERC7802.sol';
 import {ISemver} from '@optimism/interfaces/universal/ISemver.sol';
 import {Predeploys} from '@optimism/src/libraries/Predeploys.sol';
 import {Unauthorized} from '@optimism/src/libraries/errors/CommonErrors.sol';
 
-import {IERC20} from '@openzeppelin/contracts/interfaces/IERC20.sol';
-import {IERC20Upgradeable, IERC5805Upgradeable, IERC20PermitUpgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol';
-import {ERC20Upgradeable, ERC20PermitUpgradeable, ERC20VotesUpgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol';
+import {
+    IERC20PermitUpgradeable,
+    IERC20Upgradeable,
+    IERC5805Upgradeable
+} from '@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol';
+import {
+    ERC20PermitUpgradeable,
+    ERC20Upgradeable,
+    ERC20VotesUpgradeable
+} from '@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol';
 import {SafeCastUpgradeable} from '@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol';
+import {IERC20} from '@openzeppelin/contracts/interfaces/IERC20.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
 
@@ -20,7 +28,6 @@ import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
  * The ERC20 memecoin created when a new token is flaunched.
  */
 contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IMemecoin, ISemver {
-
     error MintAddressIsZero();
     error CallerNotFlaunch();
     error Permit2AllowanceIsFixedAtInfinity();
@@ -41,7 +48,7 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
     Flaunch public flaunch;
 
     /// @dev The canonical Permit2 address. 标准化的Permit2地址。
-    /// For signature-based allowance granting for single transaction ERC20 `transferFrom`. 
+    /// For signature-based allowance granting for single transaction ERC20 `transferFrom`.
     /// 用于基于签名的授权，用于单笔交易的ERC20 `transferFrom`。
     /// To enable, override `_givePermit2InfiniteAllowance()`. 要启用，重写`_givePermit2InfiniteAllowance()`。
     /// [Github](https://github.com/Uniswap/permit2)
@@ -53,7 +60,7 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * reinitialized. It is recommended to use this to lock implementation contracts that
      * are designed to be called through proxies.
      */
-    constructor () {
+    constructor() {
         _disableInitializers();
     }
 
@@ -89,7 +96,9 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * @param _amount The number of tokens to mint
      */
     function mint(address _to, uint _amount) public virtual override onlyFlaunch {
-        if (_to == address(0)) revert MintAddressIsZero();
+        if (_to == address(0)) {
+            revert MintAddressIsZero();
+        }
         _mint(_to, _amount);
     }
 
@@ -98,7 +107,9 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * 销毁调用者的`value`数量的代币。
      * See {ERC20-_burn}.
      */
-    function burn(uint value) public override {
+    function burn(
+        uint value
+    ) public override {
         _burn(msg.sender, value);
     }
 
@@ -129,10 +140,7 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * @param name_ The new name for the token
      * @param symbol_ The new symbol for the token
      */
-    function setMetadata(
-        string calldata name_,
-        string calldata symbol_
-    ) public override onlyFlaunch {
+    function setMetadata(string calldata name_, string calldata symbol_) public override onlyFlaunch {
         _name = name_;
         _symbol = symbol_;
 
@@ -142,7 +150,7 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
     /**
      * Returns the name of the token.
      * 返回token的名称。
-     */ 
+     */
     function name() public view override(ERC20Upgradeable, IMemecoin) returns (string memory) {
         return _name;
     }
@@ -150,13 +158,13 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
     /**
      * Returns the symbol of the token, usually a shorter version of the name.
      * 返回token的符号，通常是名称的简短版本。
-     */ 
+     */
     function symbol() public view override(ERC20Upgradeable, IMemecoin) returns (string memory) {
         return _symbol;
     }
 
     /**
-     * Use timestamp based checkpoints for voting. 
+     * Use timestamp based checkpoints for voting.
      * 使用时间戳为基础的检查点进行投票。
      */
     function clock() public view virtual override(ERC20VotesUpgradeable, IMemecoin) returns (uint48) {
@@ -168,7 +176,7 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * 时钟是基于时间戳的。
      */
     function CLOCK_MODE() public view virtual override returns (string memory) {
-        return "mode=timestamp&from=default";
+        return 'mode=timestamp&from=default';
     }
 
     /**
@@ -203,7 +211,6 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
         return flaunch.memecoinTreasury(tokenId);
     }
 
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          PERMIT2                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -220,9 +227,14 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * Override to support Permit2 infinite allowance.
      * 重写以支持Permit2无穷大授权。
      */
-    function allowance(address owner, address spender) public view override(ERC20Upgradeable, IERC20Upgradeable) returns (uint) {
+    function allowance(
+        address owner,
+        address spender
+    ) public view override(ERC20Upgradeable, IERC20Upgradeable) returns (uint) {
         if (_givePermit2InfiniteAllowance()) {
-            if (spender == _PERMIT2) return type(uint).max;
+            if (spender == _PERMIT2) {
+                return type(uint).max;
+            }
         }
         return super.allowance(owner, spender);
     }
@@ -231,7 +243,10 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * Override to support Permit2 infinite allowance.
      * 重写以支持Permit2无穷大授权。
      */
-    function approve(address spender, uint amount) public override(ERC20Upgradeable, IERC20Upgradeable) returns (bool) {
+    function approve(
+        address spender,
+        uint amount
+    ) public override(ERC20Upgradeable, IERC20Upgradeable) returns (bool) {
         if (_givePermit2InfiniteAllowance()) {
             if (spender == _PERMIT2 && amount != type(uint).max) {
                 revert Permit2AllowanceIsFixedAtInfinity();
@@ -244,7 +259,11 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * Override required functions from inherited contracts.
      * 重写从继承合约中需要的函数。
      */
-    function _afterTokenTransfer(address from, address to, uint amount) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint amount
+    ) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
         super._afterTokenTransfer(from, to, amount);
 
         // Auto self-delegation if the recipient hasn't delegated yet
@@ -253,7 +272,6 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
             _delegate(to, to);
         }
     }
-
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                      SuperchainERC20                       */
@@ -292,7 +310,6 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
         emit CrosschainBurn(_from, _amount, msg.sender);
     }
 
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                     Interface Support                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -302,24 +319,21 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
      * 通过合约扩展定义我们的支持接口。
      * @dev Implements IERC165 via IERC7802
      */
-    function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
-        return (
-            // Base token interfaces
-            _interfaceId == type(IERC20).interfaceId ||
-            _interfaceId == type(IERC20Upgradeable).interfaceId ||
-
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual override returns (bool) {
+        return
+        // Base token interfaces
+        (
+            _interfaceId == type(IERC20).interfaceId || _interfaceId == type(IERC20Upgradeable).interfaceId
             // Permit interface
-            _interfaceId == type(IERC20PermitUpgradeable).interfaceId ||
-
+            || _interfaceId == type(IERC20PermitUpgradeable).interfaceId
             // ERC20VotesUpgradable interface
-            _interfaceId == type(IERC5805Upgradeable).interfaceId ||
-
+            || _interfaceId == type(IERC5805Upgradeable).interfaceId
             // Superchain interfaces
-            _interfaceId == type(IERC7802).interfaceId ||
-            _interfaceId == type(IERC165).interfaceId ||
-
+            || _interfaceId == type(IERC7802).interfaceId || _interfaceId == type(IERC165).interfaceId
             // Memecoin interface
-            _interfaceId == type(IMemecoin).interfaceId
+            || _interfaceId == type(IMemecoin).interfaceId
         );
     }
 
@@ -343,5 +357,4 @@ contract Memecoin is ERC20PermitUpgradeable, ERC20VotesUpgradeable, IERC7802, IM
         }
         _;
     }
-
 }

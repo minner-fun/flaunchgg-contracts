@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import {IBaseAirdrop} from '@flaunch-interfaces/IBaseAirdrop.sol';
 
 interface IMerkleAirdrop is IBaseAirdrop {
-
     /**
      * Stores the data for a memecoin airdrop.
      *
@@ -22,8 +21,12 @@ interface IMerkleAirdrop is IBaseAirdrop {
         string merkleDataIPFSHash;
     }
 
-    event NewAirdrop(address indexed _creator, uint indexed _airdropIndex, address _token, uint _amount, uint _airdropEndTime);
-    event AirdropClaimed(address indexed _user, address indexed _creator, uint indexed _airdropIndex, address _tokenClaimed, uint _amount);
+    event NewAirdrop(
+        address indexed _creator, uint indexed _airdropIndex, address _token, uint _amount, uint _airdropEndTime
+    );
+    event AirdropClaimed(
+        address indexed _user, address indexed _creator, uint indexed _airdropIndex, address _tokenClaimed, uint _amount
+    );
     event CreatorWithdraw(address indexed _creator, uint indexed _airdropIndex, address _tokenWithdrawn, uint _amount);
 
     error InvalidAirdropIndex();
@@ -31,7 +34,9 @@ interface IMerkleAirdrop is IBaseAirdrop {
     error AirdropExpired();
     error MerkleVerificationFailed();
 
-    function airdropsCount(address _creator) external view returns (uint);
+    function airdropsCount(
+        address _creator
+    ) external view returns (uint);
 
     function airdropData(address _creator, uint _airdropIndex) external view returns (AirdropData memory);
 
@@ -47,12 +52,7 @@ interface IMerkleAirdrop is IBaseAirdrop {
         string calldata _merkleDataIPFSHash
     ) external payable;
 
-    function claim(
-        address _creator,
-        uint _airdropIndex,
-        uint _amount,
-        bytes32[] calldata _merkleProof
-    ) external;
+    function claim(address _creator, uint _airdropIndex, uint _amount, bytes32[] calldata _merkleProof) external;
 
     function proxyClaim(
         address _claimant,
@@ -62,7 +62,9 @@ interface IMerkleAirdrop is IBaseAirdrop {
         bytes32[] calldata _merkleProof
     ) external;
 
-    function creatorWithdraw(uint _airdropIndex) external returns (uint tokensWithdrawn);
+    function creatorWithdraw(
+        uint _airdropIndex
+    ) external returns (uint tokensWithdrawn);
 
     function isPartOfMerkleTree(
         address _creator,
@@ -73,5 +75,4 @@ interface IMerkleAirdrop is IBaseAirdrop {
     ) external view returns (bool);
 
     function isAirdropActive(address _creator, uint _airdropIndex) external view returns (bool);
-
 }

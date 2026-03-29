@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {FixedPointMathLib} from '@solady/utils/FixedPointMathLib.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
-
 
 /**
  * Calculates the fee to be paid for a swap based on the amount of volume being transacted in
@@ -17,7 +17,6 @@ import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
  * an increased price which will decrease rapidly to normalise the fee.
  */
 contract DynamicFeeCalculatorV2 is IFeeCalculator {
-
     using PoolIdLibrary for PoolKey;
 
     /// Thrown when `trackSwap` is called by unauthorized address
@@ -25,7 +24,7 @@ contract DynamicFeeCalculatorV2 is IFeeCalculator {
 
     /**
      * Contains information regarding token1 accumulated volume and fee for a specific pool.
-     * 
+     *
      * @member currentFeeScaled The current fee scaled by 1e18
      * @member lastFeeIncreaseTime The timestamp of the last fee increase
      * @member accumulatorWeightedVolume The time weighted volume of token1 swaps, the latest swap has the most weight
@@ -67,7 +66,7 @@ contract DynamicFeeCalculatorV2 is IFeeCalculator {
     address public immutable nativeToken;
 
     /// Maps our `PoolInfo` to each pool
-    mapping (PoolId _poolId => PoolInfo _poolInfo) public poolInfos;
+    mapping(PoolId _poolId => PoolInfo _poolInfo) public poolInfos;
 
     /**
      * Assigns our {PositionManager} address to ensure that `trackSwap` is only called
@@ -76,7 +75,7 @@ contract DynamicFeeCalculatorV2 is IFeeCalculator {
      * @param _positionManager The address of our {PositionManager} contract
      * @param _nativeToken The native token used for Flaunch
      */
-    constructor (address _positionManager, address _nativeToken) {
+    constructor(address _positionManager, address _nativeToken) {
         positionManager = _positionManager;
         nativeToken = _nativeToken;
     }
@@ -94,7 +93,7 @@ contract DynamicFeeCalculatorV2 is IFeeCalculator {
      */
     function determineSwapFee(
         PoolKey memory _poolKey,
-        IPoolManager.SwapParams memory /* _params */,
+        IPoolManager.SwapParams memory, /* _params */
         uint24 _baseFee
     ) external view returns (uint24 swapFee_) {
         PoolId poolId = _poolKey.toId();
@@ -110,7 +109,8 @@ contract DynamicFeeCalculatorV2 is IFeeCalculator {
             uint24 currentFeeScaled = poolInfos[poolId].currentFeeScaled;
 
             // Fee should linearly tend towards the minimum fee over the rolling fee window
-            uint feeDecreaseScaled = ((currentFeeScaled - MINIMUM_FEE_SCALED) * timeElapsed) / ROLLING_FEE_WINDOW_DURATION;
+            uint feeDecreaseScaled =
+                ((currentFeeScaled - MINIMUM_FEE_SCALED) * timeElapsed) / ROLLING_FEE_WINDOW_DURATION;
             swapFeeScaled = currentFeeScaled - feeDecreaseScaled;
         }
 
@@ -126,23 +126,23 @@ contract DynamicFeeCalculatorV2 is IFeeCalculator {
      * @param _delta The amount owed to the caller (positive) or owed to the pool (negative)
      */
     function trackSwap(
-        address /* _sender */,
+        address, /* _sender */
         PoolKey calldata _key,
-        IPoolManager.SwapParams calldata /* _params */,
+        IPoolManager.SwapParams calldata, /* _params */
         BalanceDelta _delta,
         bytes calldata /* _hookData */
     ) external {
         // Ensure that this call is coming from the {PositionManager}
-        if (msg.sender != positionManager) revert CallerNotPositionManager();
+        if (msg.sender != positionManager) {
+            revert CallerNotPositionManager();
+        }
 
         // Load our PoolInfo, opened as storage to update values
         PoolId poolId = _key.toId();
         PoolInfo storage poolInfo = poolInfos[poolId];
 
         // Absolute amount of non-native token swapped
-        int deltaVolume = int(
-            Currency.unwrap(_key.currency0) == nativeToken ? _delta.amount1() : _delta.amount0()
-        );
+        int deltaVolume = int(Currency.unwrap(_key.currency0) == nativeToken ? _delta.amount1() : _delta.amount0());
 
         uint newVolume = uint(deltaVolume < 0 ? -deltaVolume : deltaVolume);
 
@@ -191,7 +191,10 @@ contract DynamicFeeCalculatorV2 is IFeeCalculator {
                 // to a fee of 1% - 50%.
                 uint volumeAboveThreshold = poolInfo.accumulatorWeightedVolume - INCREASE_TOKEN_VOLUME_THRESHOLD;
                 uint totalRange = TOTAL_TOKEN_SUPPLY - INCREASE_TOKEN_VOLUME_THRESHOLD;
-                newFeeScaled = MINIMUM_FEE_SCALED + FixedPointMathLib.mulDivUp(volumeAboveThreshold, (MAXIMUM_FEE_SCALED - MINIMUM_FEE_SCALED), totalRange);
+                newFeeScaled = MINIMUM_FEE_SCALED
+                    + FixedPointMathLib.mulDivUp(
+                        volumeAboveThreshold, (MAXIMUM_FEE_SCALED - MINIMUM_FEE_SCALED), totalRange
+                    );
             }
 
             // Set storage if the fee has changed

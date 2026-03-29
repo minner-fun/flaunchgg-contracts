@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
-import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {ProtocolFeeRecipient} from '@flaunch/ProtocolFeeRecipient.sol';
+import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
 
 import {FlaunchTest} from './FlaunchTest.sol';
 
-
 contract ProtocolFeeRecipientTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     ProtocolFeeRecipient protocolFeeRecipient;
 
-    constructor () {
+    constructor() {
         _deployPlatform();
 
         // Deploy our {ProtocolFeeRecipient}
@@ -124,8 +122,11 @@ contract ProtocolFeeRecipientTest is FlaunchTest {
     }
 
     function _flaunchToken() internal returns (PoolId poolId_) {
-        address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', 0, 0, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        address memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name', 'symbol', 'https://token.gg/', 0, 0, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)
+            )
+        );
         return positionManager.poolKey(memecoin).toId();
     }
-
 }

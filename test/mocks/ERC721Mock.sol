@@ -15,23 +15,21 @@ contract ERC721Mock is ERC721 {
         return _baseURI();
     }
 
-    function mint(address to, uint256 tokenId) public {
+    function mint(address to, uint tokenId) public {
         _mint(to, tokenId);
     }
 
-    function safeMint(address to, uint256 tokenId) public {
+    function safeMint(address to, uint tokenId) public {
         _safeMint(to, tokenId);
     }
 
-    function safeMint(
-        address to,
-        uint256 tokenId,
-        bytes memory _data
-    ) public {
+    function safeMint(address to, uint tokenId, bytes memory _data) public {
         _safeMint(to, tokenId, _data);
     }
 
-    function burn(uint256 tokenId) public {
+    function burn(
+        uint tokenId
+    ) public {
         _burn(tokenId);
     }
 }

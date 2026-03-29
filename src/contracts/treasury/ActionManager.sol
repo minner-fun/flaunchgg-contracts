@@ -3,25 +3,25 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-
 /**
  * Allows the contract owner to manage approved {ITreasuryAction} contracts.
  * 允许合约所有者管理批准的{ITreasuryAction}合约。
  */
 contract TreasuryActionManager is Ownable {
-
     event ActionApproved(address indexed _action);
     event ActionUnapproved(address indexed _action);
 
     // Mapping to store approved action contract addresses
-    mapping (address _action => bool _approved) public approvedActions;
+    mapping(address _action => bool _approved) public approvedActions;
 
     /**
      * Sets the contract owner.
      * 设置合约所有者。
      * @dev This contract should be created in the {PositionManager} constructor call.
      */
-    constructor (address _protocolOwner) {
+    constructor(
+        address _protocolOwner
+    ) {
         _initializeOwner(_protocolOwner);
     }
 
@@ -30,7 +30,9 @@ contract TreasuryActionManager is Ownable {
      * 批准一个操作合约。
      * @param _action {ITreasuryAction} contract address
      */
-    function approveAction(address _action) external onlyOwner {
+    function approveAction(
+        address _action
+    ) external onlyOwner {
         approvedActions[_action] = true;
         emit ActionApproved(_action);
     }
@@ -40,7 +42,9 @@ contract TreasuryActionManager is Ownable {
      * 移除一个操作合约的批准。
      * @param _action {ITreasuryAction} contract address
      */
-    function unapproveAction(address _action) external onlyOwner {
+    function unapproveAction(
+        address _action
+    ) external onlyOwner {
         approvedActions[_action] = false;
         emit ActionUnapproved(_action);
     }
@@ -53,5 +57,4 @@ contract TreasuryActionManager is Ownable {
     function _guardInitializeOwner() internal pure override returns (bool) {
         return true;
     }
-
 }

@@ -7,9 +7,7 @@ import {ZoraVerifier} from '@flaunch/creators/verifiers/ZoraVerifier.sol';
 
 import {Test} from 'forge-std/Test.sol';
 
-
 contract ZoraVerifierTest is Test {
-
     address payable public constant ANY_POSITION_MANAGER_ADDRESS = payable(0x2aD43d0618b1d8a0CC75CF716Cf0bf64070725dC);
 
     AnyPositionManager public anyPositionManager;
@@ -18,7 +16,7 @@ contract ZoraVerifierTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString('BASE_RPC_URL'));
-        
+
         // Register our AnyPositionManager
         anyPositionManager = AnyPositionManager(ANY_POSITION_MANAGER_ADDRESS);
 
@@ -31,7 +29,7 @@ contract ZoraVerifierTest is Test {
         // Register the known Zora coin implementations
         verifier.setZoraCoinImplementation(0xeBCc4B0Cf2cFD448616d3cb42C5825528b60317D, true);
         verifier.setZoraCoinImplementation(0xbECAe78D441FBa11017bB7A8798D018b0977F76d, true);
-        
+
         // Add the verifier to the importer
         vm.startPrank(anyPositionManager.owner());
         anyPositionManager.approveCreator(address(importer), true);
@@ -66,10 +64,9 @@ contract ZoraVerifierTest is Test {
     function test_CannotImportInvalidToken() public {
         // An invalid token address
         address invalidToken = address(0x123);
-        
+
         // Attempt to import the token - should revert
         vm.expectRevert(TokenImporter.InvalidMemecoin.selector);
         importer.initialize(invalidToken, 80_00, 5000e6);
     }
-
 }

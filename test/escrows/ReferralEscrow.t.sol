@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {ReferralEscrow} from '@flaunch/escrows/ReferralEscrow.sol';
 
-import {ERC20Mock} from '../tokens/ERC20Mock.sol';
 import {FlaunchTest} from '../FlaunchTest.sol';
-
+import {ERC20Mock} from '../tokens/ERC20Mock.sol';
 
 contract ReferralEscrowTest is FlaunchTest {
-
     address owner = address(this);
     address nonOwner = address(0x123);
 
@@ -100,7 +99,11 @@ contract ReferralEscrowTest is FlaunchTest {
         referralEscrow.assignTokens(POOL_ID, _recipient, address(token1), _amount2);
         referralEscrow.assignTokens(POOL_ID, _recipient, address(token2), _amount2);
 
-        assertEq(referralEscrow.allocations(_recipient, address(token1)), uint(_amount1) + _amount2, 'Incorrect token1 allocation');
+        assertEq(
+            referralEscrow.allocations(_recipient, address(token1)),
+            uint(_amount1) + _amount2,
+            'Incorrect token1 allocation'
+        );
         assertEq(referralEscrow.allocations(_recipient, address(token2)), _amount2, 'Incorrect token2 allocation');
 
         vm.stopPrank();
@@ -113,7 +116,9 @@ contract ReferralEscrowTest is FlaunchTest {
 
     // --- Fuzz Testing: One Token Claims ---
 
-    function test_Fuzz_CanClaimSingleToken(uint amount) public {
+    function test_Fuzz_CanClaimSingleToken(
+        uint amount
+    ) public {
         vm.assume(amount > 0 && amount < 1e18); // Limit to reasonable range
 
         // Assign token and claim it
@@ -238,7 +243,9 @@ contract ReferralEscrowTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function _flaunchMock(string memory _name) internal returns (address) {
+    function _flaunchMock(
+        string memory _name
+    ) internal returns (address) {
         return positionManager.flaunch(
             PositionManager.FlaunchParams({
                 name: _name,
@@ -270,7 +277,9 @@ contract ReferralEscrowTest is FlaunchTest {
         referralEscrow.claimTokens(tokens, _recipient);
     }
 
-    function _createEthPosition(address _token) internal {
+    function _createEthPosition(
+        address _token
+    ) internal {
         uint amount = 1 ether;
 
         deal(address(this), amount);
@@ -294,5 +303,4 @@ contract ReferralEscrowTest is FlaunchTest {
             })
         );
     }
-
 }

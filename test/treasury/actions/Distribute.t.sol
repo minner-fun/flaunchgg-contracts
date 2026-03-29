@@ -4,17 +4,15 @@ pragma solidity ^0.8.26;
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {DistributeAction, ITreasuryAction} from '@flaunch/treasury/actions/Distribute.sol';
-import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
+import {DistributeAction, ITreasuryAction} from '@flaunch/treasury/actions/Distribute.sol';
 
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
 import {FlaunchTest} from '../../FlaunchTest.sol';
 
-
 contract DistributeActionTest is FlaunchTest {
-
     PoolKey poolKey;
     DistributeAction action;
     MemecoinTreasury memecoinTreasury;
@@ -134,7 +132,9 @@ contract DistributeActionTest is FlaunchTest {
         assertEq(poolKey.currency1.balanceOf(address(3)), 0.0 ether);
     }
 
-    function test_CannotDistributeWithInsufficientTokens(bool _token0) public {
+    function test_CannotDistributeWithInsufficientTokens(
+        bool _token0
+    ) public {
         // Create 3 distributions
         DistributeAction.Distribution[] memory distributions = new DistributeAction.Distribution[](1);
         distributions[0] = _distribution(address(1), 100 ether, _token0);
@@ -143,12 +143,11 @@ contract DistributeActionTest is FlaunchTest {
         memecoinTreasury.executeAction(address(action), abi.encode(distributions));
     }
 
-    function _distribution(address _recipient, uint _amount, bool _token0) internal pure returns (DistributeAction.Distribution memory) {
-        return DistributeAction.Distribution({
-            recipient: _recipient,
-            token0: _token0,
-            amount: _amount
-        });
+    function _distribution(
+        address _recipient,
+        uint _amount,
+        bool _token0
+    ) internal pure returns (DistributeAction.Distribution memory) {
+        return DistributeAction.Distribution({recipient: _recipient, token0: _token0, amount: _amount});
     }
-
 }

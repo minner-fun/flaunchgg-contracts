@@ -5,27 +5,28 @@ import {SafeTransferLib} from '@solady/utils/SafeTransferLib.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
 import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
-import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
+
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
 import {WhitelistFairLaunch} from '@flaunch/subscribers/WhitelistFairLaunch.sol';
+import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
 
-import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
+import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 import {IMerkleAirdrop} from '@flaunch-interfaces/IMerkleAirdrop.sol';
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
 import {ITrustedSignerFeeCalculator} from '@flaunch-interfaces/ITrustedSignerFeeCalculator.sol';
-
 
 /**
  * Allows a token to be flaunched with all additional layers of customisation added to
@@ -35,7 +36,6 @@ import {ITrustedSignerFeeCalculator} from '@flaunch-interfaces/ITrustedSignerFee
  * against to ensure we have a single contract as a flaunching entry point.
  */
 contract FlaunchZap {
-
     using SafeCast for uint;
 
     error CreatorCannotBeZero();
@@ -119,7 +119,7 @@ contract FlaunchZap {
      * @param _merkleAirdrop The contract to facilitate airdrops
      * @param _whitelistFairLaunch The {WhitelistFairLaunch} contract address
      */
-    constructor (
+    constructor(
         PositionManager _positionManager,
         Flaunch _flaunchContract,
         IFLETH _flETH,
@@ -142,7 +142,8 @@ contract FlaunchZap {
      *
      * @param _flaunchParams The base flaunch parameters
      * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
-     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
+     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted
+     * signer
      *
      * @return memecoin_ The created ERC20 token address
      * @return ethSpent_ The amount of ETH spent during the premine
@@ -174,7 +175,8 @@ contract FlaunchZap {
      *
      * @param _flaunchParams The base flaunch parameters
      * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
-     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
+     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted
+     * signer
      * @param _whitelistParams Whitelist related flaunch logic
      * @param _airdropParams Airdrop related flaunch logic
      * @param _treasuryManagerParams Treasury Manager related flaunch logic
@@ -193,7 +195,9 @@ contract FlaunchZap {
     ) external payable refundsEth returns (address memecoin_, uint ethSpent_, address deployedManager_) {
         // Map the original creator throughout, even if it overwritten by a treasury manager
         address creator = _flaunchParams.creator;
-        if (creator == address(0)) revert CreatorCannotBeZero();
+        if (creator == address(0)) {
+            revert CreatorCannotBeZero();
+        }
 
         // If we are setting up a TreasuryManager then we need to ensure that the creator is
         // updated to this zap contract.
@@ -249,9 +253,7 @@ contract FlaunchZap {
         address _owner,
         bytes calldata _data,
         address _permissions
-    ) public returns (
-        address payable manager_
-    ) {
+    ) public returns (address payable manager_) {
         // Deploy our manager implementation
         manager_ = treasuryManagerFactory.deployAndInitializeManager({
             _managerImplementation: _managerImplementation,
@@ -274,7 +276,10 @@ contract FlaunchZap {
      *
      * @return memecoin_ The address of the flaunched ERC20 token
      */
-    function _flaunch(PositionManager.FlaunchParams memory _flaunchParams, address _trustedFeeSigner) internal returns (address memecoin_) {
+    function _flaunch(
+        PositionManager.FlaunchParams memory _flaunchParams,
+        address _trustedFeeSigner
+    ) internal returns (address memecoin_) {
         // if no trusted fee signer is provided, then we flaunch as normal
         if (_trustedFeeSigner == address(0)) {
             memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
@@ -282,7 +287,8 @@ contract FlaunchZap {
             // `setTrustedPoolKeySigner` can only be called by the current creator
             // so we make this contract as the creator for now
 
-            // in case we are flaunching into a treasury manager, the creator is already temporarily set as this contract
+            // in case we are flaunching into a treasury manager, the creator is already temporarily set as this
+            // contract
             address originalCreator = _flaunchParams.creator;
             if (originalCreator != address(this)) {
                 _flaunchParams.creator = address(this);
@@ -290,7 +296,7 @@ contract FlaunchZap {
 
             // flaunch the token
             memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
-            
+
             // set the trusted fee signer for this memecoin
             ITrustedSignerFeeCalculator(address(positionManager.getFeeCalculator(true))).setTrustedPoolKeySigner({
                 _poolKey: positionManager.poolKey(memecoin_),
@@ -299,11 +305,7 @@ contract FlaunchZap {
 
             // if the creator was not this contract, we need to send the flaunch NFT to the original creator
             if (originalCreator != address(this)) {
-                flaunchContract.transferFrom(
-                    address(this),
-                    originalCreator,
-                    flaunchContract.tokenId(memecoin_)
-                );
+                flaunchContract.transferFrom(address(this), originalCreator, flaunchContract.tokenId(memecoin_));
             }
         }
     }
@@ -343,10 +345,7 @@ contract FlaunchZap {
             flaunchContract.approve(deployedManager_, tokenId);
 
             ITreasuryManager(deployedManager_).deposit({
-                _flaunchToken: ITreasuryManager.FlaunchToken({
-                    flaunch: flaunchContract,
-                    tokenId: tokenId
-                }),
+                _flaunchToken: ITreasuryManager.FlaunchToken({flaunch: flaunchContract, tokenId: tokenId}),
                 _creator: _creator,
                 _data: _treasuryManagerParams.depositData
             });
@@ -363,10 +362,7 @@ contract FlaunchZap {
             flaunchContract.approve(_treasuryManagerParams.manager, tokenId);
 
             ITreasuryManager(_treasuryManagerParams.manager).deposit({
-                _flaunchToken: ITreasuryManager.FlaunchToken({
-                    flaunch: flaunchContract,
-                    tokenId: tokenId
-                }),
+                _flaunchToken: ITreasuryManager.FlaunchToken({flaunch: flaunchContract, tokenId: tokenId}),
                 _creator: _creator,
                 _data: _treasuryManagerParams.depositData
             });
@@ -400,11 +396,16 @@ contract FlaunchZap {
      *
      * @param _memecoin The address of the flaunched ERC20
      * @param _premineAmount The amount of tokens the user wants to purchase from initial supply
-     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
+     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted
+     * signer
      *
      * @return ethSpent_ The amount of ETH spent during the premine
      */
-    function _premine(address _memecoin, uint _premineAmount, bytes calldata _premineSwapHookData) internal returns (uint ethSpent_) {
+    function _premine(
+        address _memecoin,
+        uint _premineAmount,
+        bytes calldata _premineSwapHookData
+    ) internal returns (uint ethSpent_) {
         // Capture the PoolKey that was created during the 'flaunch'
         PoolKey memory _poolKey = positionManager.poolKey(_memecoin);
 
@@ -429,9 +430,7 @@ contract FlaunchZap {
             _params: IPoolManager.SwapParams({
                 zeroForOne: !flipped,
                 amountSpecified: _premineAmount.toInt256(),
-                sqrtPriceLimitX96: !flipped
-                    ? TickMath.MIN_SQRT_PRICE + 1
-                    : TickMath.MAX_SQRT_PRICE - 1
+                sqrtPriceLimitX96: !flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             }),
             _hookData: _premineSwapHookData
         });
@@ -487,9 +486,14 @@ contract FlaunchZap {
      *
      * @return ethRequired_ The amount of ETH that will be required
      */
-    function calculateFee(uint _premineAmount, uint _slippage, bytes calldata _initialPriceParams) public view returns (uint ethRequired_) {
+    function calculateFee(
+        uint _premineAmount,
+        uint _slippage,
+        bytes calldata _initialPriceParams
+    ) public view returns (uint ethRequired_) {
         // Market cap / total supply * premineAmount + swapFee
-        uint premineCost = positionManager.getFlaunchingMarketCap(_initialPriceParams) * _premineAmount / TokenSupply.INITIAL_SUPPLY;
+        uint premineCost =
+            positionManager.getFlaunchingMarketCap(_initialPriceParams) * _premineAmount / TokenSupply.INITIAL_SUPPLY;
 
         // Create a fake pool key, just to generate an non-existant ID to check against
         PoolKey memory fakePoolKey = PoolKey({
@@ -532,7 +536,7 @@ contract FlaunchZap {
     /**
      * Returns any ETH remaining in the contract to the `msg.sender` after the transaction.
      */
-    modifier refundsEth {
+    modifier refundsEth() {
         _;
 
         // Refund the remaining ETH
@@ -546,5 +550,4 @@ contract FlaunchZap {
      * To receive ETH from flETH on withdraw.
      */
     receive() external payable {}
-
 }

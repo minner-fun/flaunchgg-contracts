@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Currency, CurrencyLibrary} from '@uniswap/v4-core/src/types/Currency.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+
 import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
 import {SwapMath} from '@uniswap/v4-core/src/libraries/SwapMath.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {Currency, CurrencyLibrary} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
-
 
 /**
  * This frontruns Uniswap to sell undesired token amounts from our fees into desired tokens
@@ -20,7 +20,6 @@ import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
  * 这作为部分订单簿来减少对我们池的影响。
  */
 abstract contract InternalSwapPool {
-
     using CurrencyLibrary for Currency;
     using CurrencySettler for Currency;
     using PoolIdLibrary for PoolKey;
@@ -30,7 +29,14 @@ abstract contract InternalSwapPool {
     event PoolFeesReceived(PoolId indexed _poolId, uint _amount0, uint _amount1);
 
     /// Emitted when a pool fees have been distributed to stakers
-    event PoolFeesDistributed(PoolId indexed _poolId, uint _donateAmount, uint _creatorAmount, uint _bidWallAmount, uint _governanceAmount, uint _protocolAmount);
+    event PoolFeesDistributed(
+        PoolId indexed _poolId,
+        uint _donateAmount,
+        uint _creatorAmount,
+        uint _bidWallAmount,
+        uint _governanceAmount,
+        uint _protocolAmount
+    );
 
     /// Emitted when pool fees have been internally swapped
     event PoolFeesSwapped(PoolId indexed _poolId, bool zeroForOne, uint _amount0, uint _amount1);
@@ -46,7 +52,7 @@ abstract contract InternalSwapPool {
 
     /// Maps the amount of claimable tokens that are available to be `distributed`
     /// for a `PoolId`. 映射可分配的代币数量，用于`PoolId`。
-    mapping (PoolId _poolId => ClaimableFees _fees) internal _poolFees;
+    mapping(PoolId _poolId => ClaimableFees _fees) internal _poolFees;
 
     /**
      * Provides the {ClaimableFees} for a pool key.
@@ -55,7 +61,9 @@ abstract contract InternalSwapPool {
      *
      * @return The {ClaimableFees} for the PoolKey
      */
-    function poolFees(PoolKey memory _poolKey) public view returns (ClaimableFees memory) {
+    function poolFees(
+        PoolKey memory _poolKey
+    ) public view returns (ClaimableFees memory) {
         return _poolFees[_poolKey.toId()];
     }
 
@@ -103,10 +111,7 @@ abstract contract InternalSwapPool {
         PoolKey calldata _key,
         IPoolManager.SwapParams memory _params,
         bool _nativeIsZero
-    ) internal returns (
-        uint ethIn_,
-        uint tokenOut_
-    ) {
+    ) internal returns (uint ethIn_, uint tokenOut_) {
         PoolId poolId = _key.toId();
 
         // Load our PoolFees as storage as we will manipulate them later if we trigger
@@ -140,7 +145,7 @@ abstract contract InternalSwapPool {
             // Capture the amount of desired token required at the current pool state to
             // purchase the amount of token speicified, capped by the pool fees available.
             // 捕获在当前池状态下购买指定数量的所需token所需的金额，受可用池费用的限制。
-            (, ethIn_, tokenOut_, ) = SwapMath.computeSwapStep({
+            (, ethIn_, tokenOut_,) = SwapMath.computeSwapStep({
                 sqrtPriceCurrentX96: sqrtPriceX96,
                 sqrtPriceTargetX96: _params.sqrtPriceLimitX96,
                 liquidity: _poolManager.getLiquidity(poolId),
@@ -157,7 +162,7 @@ abstract contract InternalSwapPool {
             // as our swap step computation is essentially calculating the opposite direction.
             // 要计算我们可以接收的代币数量，我们首先传入我们请求花费的ETH数量。我们需要反转`sqrtPriceTargetX96`，
             // 因为我们的交换步骤计算基本上是计算相反的方向。
-            (, tokenOut_, ethIn_, ) = SwapMath.computeSwapStep({
+            (, tokenOut_, ethIn_,) = SwapMath.computeSwapStep({
                 sqrtPriceCurrentX96: sqrtPriceX96,
                 sqrtPriceTargetX96: _params.zeroForOne ? TickMath.MAX_SQRT_PRICE - 1 : TickMath.MIN_SQRT_PRICE + 1,
                 liquidity: _poolManager.getLiquidity(poolId),
@@ -193,5 +198,4 @@ abstract contract InternalSwapPool {
         // Capture the swap cost that we captured from our drip
         emit PoolFeesSwapped(poolId, _params.zeroForOne, ethIn_, tokenOut_);
     }
-
 }

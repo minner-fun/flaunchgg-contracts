@@ -5,29 +5,28 @@ import {stdJson} from 'forge-std/StdJson.sol';
 
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+
 import {IERC20} from '@openzeppelin/contracts/interfaces/IERC20.sol';
 import {Ownable} from '@solady/auth/Ownable.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
-import {MerkleAirdrop} from "@flaunch/creator-tools/MerkleAirdrop.sol";
-import {IMerkleAirdrop} from '@flaunch-interfaces/IMerkleAirdrop.sol';
 import {IBaseAirdrop} from '@flaunch-interfaces/IBaseAirdrop.sol';
+import {IMerkleAirdrop} from '@flaunch-interfaces/IMerkleAirdrop.sol';
+import {MerkleAirdrop} from '@flaunch/creator-tools/MerkleAirdrop.sol';
 
 import {FlaunchTest} from 'test/FlaunchTest.sol';
 
-
 contract MerkleAirdropTest is FlaunchTest {
-
     using stdJson for string;
 
     struct MerkleJSON {
         bytes32 root;
         address creator;
-        uint256 airdropIndex;
+        uint airdropIndex;
         address token;
         string tokenSymbol;
-        uint256 tokenDecimals;
-        uint256 totalTokensToAirdropInWei;
+        uint tokenDecimals;
+        uint totalTokensToAirdropInWei;
         string totalTokensToAirdropFormatted;
         mapping(address userAddress => UserData) userData;
     }
@@ -35,7 +34,7 @@ contract MerkleAirdropTest is FlaunchTest {
     address[] userAddresses;
 
     struct UserData {
-        uint256 airdropAmountInWei;
+        uint airdropAmountInWei;
         string airdropAmountFormatted;
         bytes32[] proof;
     }
@@ -49,7 +48,9 @@ contract MerkleAirdropTest is FlaunchTest {
     }
 
     /// addAirdrop()
-    function test_addAirdrop_RevertsForNonApprovedCaller(address _caller) external {
+    function test_addAirdrop_RevertsForNonApprovedCaller(
+        address _caller
+    ) external {
         vm.assume(_caller != address(0));
 
         // deploy memecoin and send to the caller
@@ -63,11 +64,13 @@ contract MerkleAirdropTest is FlaunchTest {
         _addAirdrop();
     }
 
-    function test_addAirdrop_SuccessForApprovedCaller(address _caller) external {
+    function test_addAirdrop_SuccessForApprovedCaller(
+        address _caller
+    ) external {
         vm.assume(_caller != address(0));
 
         merkleAirdrop.setApprovedAirdropCreators(_caller, true);
-        
+
         // deploy memecoin and send to the caller
         _deployMemecoin();
         IERC20(merkleJSON.token).transfer(_caller, IERC20(merkleJSON.token).balanceOf(address(this)));
@@ -77,7 +80,9 @@ contract MerkleAirdropTest is FlaunchTest {
         _addAirdrop();
     }
 
-    function test_addAirdrop_SuccessForManagerDeployedViaTreasuryManager(address _managerImplementation) external {
+    function test_addAirdrop_SuccessForManagerDeployedViaTreasuryManager(
+        address _managerImplementation
+    ) external {
         vm.assume(_managerImplementation != address(0));
 
         treasuryManagerFactory.approveManager(_managerImplementation);
@@ -93,7 +98,9 @@ contract MerkleAirdropTest is FlaunchTest {
         _addAirdrop();
     }
 
-    function test_addAirdrop_RevertsForInvalidAirdropIndex(uint256 _airdropIndex) external {
+    function test_addAirdrop_RevertsForInvalidAirdropIndex(
+        uint _airdropIndex
+    ) external {
         _isApprovedAirdropCreator();
 
         vm.assume(_airdropIndex != merkleAirdrop.airdropsCount(merkleJSON.creator));
@@ -140,18 +147,29 @@ contract MerkleAirdropTest is FlaunchTest {
         uint prevAirdropsCount = merkleAirdrop.airdropsCount(merkleJSON.creator);
 
         vm.expectEmit(true, true, false, true);
-        emit IMerkleAirdrop.NewAirdrop(merkleJSON.creator, merkleJSON.airdropIndex, merkleJSON.token, merkleJSON.totalTokensToAirdropInWei, block.timestamp + 30 days);
+        emit IMerkleAirdrop.NewAirdrop(
+            merkleJSON.creator,
+            merkleJSON.airdropIndex,
+            merkleJSON.token,
+            merkleJSON.totalTokensToAirdropInWei,
+            block.timestamp + 30 days
+        );
         _addAirdrop();
 
-        assertEq(IERC20(merkleJSON.token).balanceOf(address(merkleAirdrop)) - prevMemecoinBalance, merkleJSON.totalTokensToAirdropInWei, "Token balance mismatch");
-        assertEq(merkleAirdrop.airdropsCount(merkleJSON.creator), prevAirdropsCount + 1, "Airdrops count mismatch");
+        assertEq(
+            IERC20(merkleJSON.token).balanceOf(address(merkleAirdrop)) - prevMemecoinBalance,
+            merkleJSON.totalTokensToAirdropInWei,
+            'Token balance mismatch'
+        );
+        assertEq(merkleAirdrop.airdropsCount(merkleJSON.creator), prevAirdropsCount + 1, 'Airdrops count mismatch');
 
-        IMerkleAirdrop.AirdropData memory airdropData = merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex);
-        assertEq(airdropData.token, merkleJSON.token, "Token mismatch");
-        assertEq(airdropData.airdropEndTime, block.timestamp + 30 days, "Airdrop end time mismatch");
-        assertEq(airdropData.amountLeft, merkleJSON.totalTokensToAirdropInWei, "Airdrop amount left mismatch");
-        assertEq(airdropData.merkleRoot, merkleJSON.root, "Merkle root mismatch");
-        assertEq(airdropData.merkleDataIPFSHash, 'Qabc', "Merkle data IPFS hash mismatch");
+        IMerkleAirdrop.AirdropData memory airdropData =
+            merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex);
+        assertEq(airdropData.token, merkleJSON.token, 'Token mismatch');
+        assertEq(airdropData.airdropEndTime, block.timestamp + 30 days, 'Airdrop end time mismatch');
+        assertEq(airdropData.amountLeft, merkleJSON.totalTokensToAirdropInWei, 'Airdrop amount left mismatch');
+        assertEq(airdropData.merkleRoot, merkleJSON.root, 'Merkle root mismatch');
+        assertEq(airdropData.merkleDataIPFSHash, 'Qabc', 'Merkle data IPFS hash mismatch');
     }
 
     // addAirdrop()::ETH airdrop
@@ -167,7 +185,9 @@ contract MerkleAirdropTest is FlaunchTest {
         uint prevAirdropsCount = merkleAirdrop.airdropsCount(merkleJSON.creator);
 
         vm.expectEmit(true, true, false, true);
-        emit IMerkleAirdrop.NewAirdrop(merkleJSON.creator, merkleJSON.airdropIndex, token, msgValue, block.timestamp + 30 days);
+        emit IMerkleAirdrop.NewAirdrop(
+            merkleJSON.creator, merkleJSON.airdropIndex, token, msgValue, block.timestamp + 30 days
+        );
         merkleAirdrop.addAirdrop{value: msgValue}({
             _creator: merkleJSON.creator,
             _airdropIndex: merkleJSON.airdropIndex,
@@ -178,15 +198,16 @@ contract MerkleAirdropTest is FlaunchTest {
             _merkleDataIPFSHash: 'Qabc'
         });
 
-        assertEq(flETH.balanceOf(address(merkleAirdrop)) - prevFLETHBalance, msgValue, "FLETH balance mismatch");
-        assertEq(merkleAirdrop.airdropsCount(merkleJSON.creator), prevAirdropsCount + 1, "Airdrops count mismatch");
+        assertEq(flETH.balanceOf(address(merkleAirdrop)) - prevFLETHBalance, msgValue, 'FLETH balance mismatch');
+        assertEq(merkleAirdrop.airdropsCount(merkleJSON.creator), prevAirdropsCount + 1, 'Airdrops count mismatch');
 
-        IMerkleAirdrop.AirdropData memory airdropData = merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex);
-        assertEq(airdropData.token, token, "Token mismatch");
-        assertEq(airdropData.airdropEndTime, block.timestamp + 30 days, "Airdrop end time mismatch");
-        assertEq(airdropData.amountLeft, msgValue, "Airdrop amount left mismatch");
-        assertEq(airdropData.merkleRoot, merkleJSON.root, "Merkle root mismatch");
-        assertEq(airdropData.merkleDataIPFSHash, 'Qabc', "Merkle data IPFS hash mismatch");
+        IMerkleAirdrop.AirdropData memory airdropData =
+            merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex);
+        assertEq(airdropData.token, token, 'Token mismatch');
+        assertEq(airdropData.airdropEndTime, block.timestamp + 30 days, 'Airdrop end time mismatch');
+        assertEq(airdropData.amountLeft, msgValue, 'Airdrop amount left mismatch');
+        assertEq(airdropData.merkleRoot, merkleJSON.root, 'Merkle root mismatch');
+        assertEq(airdropData.merkleDataIPFSHash, 'Qabc', 'Merkle data IPFS hash mismatch');
     }
 
     /// claim()
@@ -239,7 +260,7 @@ contract MerkleAirdropTest is FlaunchTest {
             _merkleProof: invalidProof
         });
     }
-    
+
     // claim()::token airdrop
     function test_claim_SuccessForTokenAirdrop() external {
         _deployAndAddAirdrop();
@@ -249,7 +270,13 @@ contract MerkleAirdropTest is FlaunchTest {
 
         vm.prank(userAddresses[0]);
         vm.expectEmit(true, true, true, true);
-        emit IMerkleAirdrop.AirdropClaimed(userAddresses[0], merkleJSON.creator, merkleJSON.airdropIndex, merkleJSON.token, merkleJSON.userData[userAddresses[0]].airdropAmountInWei);
+        emit IMerkleAirdrop.AirdropClaimed(
+            userAddresses[0],
+            merkleJSON.creator,
+            merkleJSON.airdropIndex,
+            merkleJSON.token,
+            merkleJSON.userData[userAddresses[0]].airdropAmountInWei
+        );
         merkleAirdrop.claim({
             _creator: merkleJSON.creator,
             _airdropIndex: merkleJSON.airdropIndex,
@@ -259,16 +286,28 @@ contract MerkleAirdropTest is FlaunchTest {
 
         uint postAirdropAmountLeft = merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex).amountLeft;
 
-        assertEq(IERC20(merkleJSON.token).balanceOf(userAddresses[0]) - prevTokenBalance, merkleJSON.userData[userAddresses[0]].airdropAmountInWei, "Claimed amount mismatch");
-        assertEq(merkleAirdrop.isAirdropClaimed(merkleJSON.creator, merkleJSON.airdropIndex, userAddresses[0]), true, "Airdrop claimed status mismatch");
-        assertEq(prevAirdropAmountLeft - postAirdropAmountLeft, merkleJSON.userData[userAddresses[0]].airdropAmountInWei, "Airdrop amount left mismatch");
+        assertEq(
+            IERC20(merkleJSON.token).balanceOf(userAddresses[0]) - prevTokenBalance,
+            merkleJSON.userData[userAddresses[0]].airdropAmountInWei,
+            'Claimed amount mismatch'
+        );
+        assertEq(
+            merkleAirdrop.isAirdropClaimed(merkleJSON.creator, merkleJSON.airdropIndex, userAddresses[0]),
+            true,
+            'Airdrop claimed status mismatch'
+        );
+        assertEq(
+            prevAirdropAmountLeft - postAirdropAmountLeft,
+            merkleJSON.userData[userAddresses[0]].airdropAmountInWei,
+            'Airdrop amount left mismatch'
+        );
     }
 
     function test_claim_AllUsers_SuccessForTokenAirdrop() external {
         _deployAndAddAirdrop();
 
         // loop through each user and claim
-        for (uint256 i = 0; i < userAddresses.length; i++) {
+        for (uint i = 0; i < userAddresses.length; i++) {
             vm.prank(userAddresses[i]);
             merkleAirdrop.claim({
                 _creator: merkleJSON.creator,
@@ -277,7 +316,11 @@ contract MerkleAirdropTest is FlaunchTest {
                 _merkleProof: merkleJSON.userData[userAddresses[i]].proof
             });
 
-            assertEq(IERC20(merkleJSON.token).balanceOf(userAddresses[i]), merkleJSON.userData[userAddresses[i]].airdropAmountInWei, "Claimed amount mismatch");
+            assertEq(
+                IERC20(merkleJSON.token).balanceOf(userAddresses[i]),
+                merkleJSON.userData[userAddresses[i]].airdropAmountInWei,
+                'Claimed amount mismatch'
+            );
         }
     }
 
@@ -319,12 +362,22 @@ contract MerkleAirdropTest is FlaunchTest {
 
         uint postAirdropAmountLeft = merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex).amountLeft;
 
-        assertEq(userAddresses[0].balance - prevETHBalance, merkleJSON.userData[userAddresses[0]].airdropAmountInWei, "Claimed amount mismatch");
-        assertEq(prevAirdropAmountLeft - postAirdropAmountLeft, merkleJSON.userData[userAddresses[0]].airdropAmountInWei, "Airdrop amount left mismatch");
+        assertEq(
+            userAddresses[0].balance - prevETHBalance,
+            merkleJSON.userData[userAddresses[0]].airdropAmountInWei,
+            'Claimed amount mismatch'
+        );
+        assertEq(
+            prevAirdropAmountLeft - postAirdropAmountLeft,
+            merkleJSON.userData[userAddresses[0]].airdropAmountInWei,
+            'Airdrop amount left mismatch'
+        );
     }
 
     /// creatorWithdraw()
-    function test_creatorWithdraw_RevertsWhenCallerIsNotCreator(address _caller) external {
+    function test_creatorWithdraw_RevertsWhenCallerIsNotCreator(
+        address _caller
+    ) external {
         vm.assume(_caller != merkleJSON.creator);
 
         _deployAndAddAirdrop();
@@ -356,17 +409,18 @@ contract MerkleAirdropTest is FlaunchTest {
         vm.prank(merkleJSON.creator);
         vm.expectEmit(true, true, false, true);
         emit IMerkleAirdrop.CreatorWithdraw(
-            merkleJSON.creator,
-            merkleJSON.airdropIndex,
-            merkleJSON.token,
-            prevAirdropAmountLeft
+            merkleJSON.creator, merkleJSON.airdropIndex, merkleJSON.token, prevAirdropAmountLeft
         );
         merkleAirdrop.creatorWithdraw(merkleJSON.airdropIndex);
 
         uint postAirdropAmountLeft = merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex).amountLeft;
 
-        assertEq(IERC20(merkleJSON.token).balanceOf(merkleJSON.creator) - prevTokenBalance, prevAirdropAmountLeft, "Token balance mismatch");
-        assertEq(postAirdropAmountLeft, 0, "Airdrop amount left mismatch");
+        assertEq(
+            IERC20(merkleJSON.token).balanceOf(merkleJSON.creator) - prevTokenBalance,
+            prevAirdropAmountLeft,
+            'Token balance mismatch'
+        );
+        assertEq(postAirdropAmountLeft, 0, 'Airdrop amount left mismatch');
     }
 
     // creatorWithdraw()::ETH airdrop
@@ -403,13 +457,15 @@ contract MerkleAirdropTest is FlaunchTest {
 
         uint postAirdropAmountLeft = merkleAirdrop.airdropData(merkleJSON.creator, merkleJSON.airdropIndex).amountLeft;
 
-        assertEq(merkleJSON.creator.balance - prevETHBalance, prevAirdropAmountLeft, "ETH balance mismatch");
-        assertEq(postAirdropAmountLeft, 0, "Airdrop amount left mismatch");
+        assertEq(merkleJSON.creator.balance - prevETHBalance, prevAirdropAmountLeft, 'ETH balance mismatch');
+        assertEq(postAirdropAmountLeft, 0, 'Airdrop amount left mismatch');
     }
 
     /// setApprovedAirdropCreators()
 
-    function test_setApprovedAirdropCreators_RevertsWhenCallerIsNotOwner(address _caller) external {
+    function test_setApprovedAirdropCreators_RevertsWhenCallerIsNotOwner(
+        address _caller
+    ) external {
         vm.assume(_caller != merkleAirdrop.owner());
 
         vm.prank(_caller);
@@ -422,7 +478,7 @@ contract MerkleAirdropTest is FlaunchTest {
         vm.expectRevert(IBaseAirdrop.ApprovedAirdropCreatorAlreadyAdded.selector);
         merkleAirdrop.setApprovedAirdropCreators(address(this), true);
     }
-    
+
     function test_setApprovedAirdropCreators_Success() external {
         vm.expectEmit(true, false, false, true);
         emit IBaseAirdrop.ApprovedAirdropCreatorAdded(address(this));
@@ -435,7 +491,7 @@ contract MerkleAirdropTest is FlaunchTest {
         vm.expectRevert(IBaseAirdrop.ApprovedAirdropCreatorNotPresent.selector);
         merkleAirdrop.setApprovedAirdropCreators(address(this), false);
     }
-    
+
     function test_setApprovedAirdropCreators_Success_Remove() external {
         _isApprovedAirdropCreator();
         vm.expectEmit(true, false, false, true);
@@ -445,10 +501,9 @@ contract MerkleAirdropTest is FlaunchTest {
         assertEq(merkleAirdrop.isApprovedAirdropCreator(address(this)), false);
     }
 
-    
     function _setMerkleJSON() internal {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/script/offchain/output/test-memecoin-merkle.json");
+        string memory path = string.concat(root, '/script/offchain/output/test-memecoin-merkle.json');
 
         string memory _merkleJson = vm.readFile(path);
 
@@ -462,25 +517,22 @@ contract MerkleAirdropTest is FlaunchTest {
         merkleJSON.totalTokensToAirdropFormatted = _merkleJson.readString('.totalTokensToAirdropFormatted');
 
         // Get all keys (addresses) from userData object
-        string[] memory userAddressesString = vm.parseJsonKeys(_merkleJson, ".userData");
+        string[] memory userAddressesString = vm.parseJsonKeys(_merkleJson, '.userData');
 
         userAddresses = new address[](userAddressesString.length);
-        
+
         // Iterate through each address and parse their data
-        for (uint256 i = 0; i < userAddressesString.length; i++) {
+        for (uint i = 0; i < userAddressesString.length; i++) {
             address userAddress = address(vm.parseAddress(userAddressesString[i]));
             userAddresses[i] = userAddress;
-            
+
             string memory userPath = string.concat('.userData.', userAddressesString[i]);
-            
+
             UserData storage userData = merkleJSON.userData[userAddress];
             userData.airdropAmountInWei = _merkleJson.readUint(string.concat(userPath, '.airdropAmountInWei'));
             userData.airdropAmountFormatted = _merkleJson.readString(string.concat(userPath, '.airdropAmountFormatted'));
-            
-            bytes32[] memory proof = vm.parseJsonBytes32Array(
-                _merkleJson,
-                string.concat(userPath, '.proof')
-            );
+
+            bytes32[] memory proof = vm.parseJsonBytes32Array(_merkleJson, string.concat(userPath, '.proof'));
 
             userData.proof = proof;
         }
@@ -488,10 +540,12 @@ contract MerkleAirdropTest is FlaunchTest {
 
     function _deployMemecoin() internal {
         // Set a market cap tick that is roughly equal to 2e18 : 1e27
-        initialPrice.setSqrtPriceX96(InitialPrice.InitialSqrtPriceX96({
-            unflipped: TickMath.getSqrtPriceAtTick(200703),
-            flipped: TickMath.getSqrtPriceAtTick(-200704)
-        }));
+        initialPrice.setSqrtPriceX96(
+            InitialPrice.InitialSqrtPriceX96({
+                unflipped: TickMath.getSqrtPriceAtTick(200703),
+                flipped: TickMath.getSqrtPriceAtTick(-200704)
+            })
+        );
 
         // {PoolManager} must have some initial flETH balance to serve `take()` requests in our hook
         deal(address(flETH), address(poolManager), 1000e27 ether);
@@ -500,20 +554,24 @@ contract MerkleAirdropTest is FlaunchTest {
         uint ethRequired = flaunchZap.calculateFee(merkleJSON.totalTokensToAirdropInWei, 0, abi.encode(''));
 
         // Flaunch the memecoin and premine the airdrop amount
-        (address memecoin,,) = flaunchZap.flaunch{value: ethRequired}(PositionManager.FlaunchParams({
-            name: "TEST",
-            symbol: "TEST",
-            tokenUri: 'https://token.gg/',
-            initialTokenFairLaunch: 0.25e27,
-            fairLaunchDuration: 30 minutes,
-            premineAmount: merkleJSON.totalTokensToAirdropInWei,
-            creator: address(this),
-            creatorFeeAllocation: 0,
-            flaunchAt: 0,
-            initialPriceParams: abi.encode(''),
-            feeCalculatorParams: abi.encode(1_000)
-        }), address(0), bytes(''));
-        assertEq(memecoin, merkleJSON.token, "Token address mismatch");
+        (address memecoin,,) = flaunchZap.flaunch{value: ethRequired}(
+            PositionManager.FlaunchParams({
+                name: 'TEST',
+                symbol: 'TEST',
+                tokenUri: 'https://token.gg/',
+                initialTokenFairLaunch: 0.25e27,
+                fairLaunchDuration: 30 minutes,
+                premineAmount: merkleJSON.totalTokensToAirdropInWei,
+                creator: address(this),
+                creatorFeeAllocation: 0,
+                flaunchAt: 0,
+                initialPriceParams: abi.encode(''),
+                feeCalculatorParams: abi.encode(1_000)
+            }),
+            address(0),
+            bytes('')
+        );
+        assertEq(memecoin, merkleJSON.token, 'Token address mismatch');
 
         IERC20(memecoin).approve(address(merkleAirdrop), merkleJSON.totalTokensToAirdropInWei);
     }

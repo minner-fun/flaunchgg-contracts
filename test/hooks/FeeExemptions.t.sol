@@ -3,21 +3,19 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import {LPFeeLibrary} from '@uniswap/v4-core/src/libraries/LPFeeLibrary.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
+import {LPFeeLibrary} from '@uniswap/v4-core/src/libraries/LPFeeLibrary.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {InternalSwapPool} from '@flaunch/hooks/InternalSwapPool.sol';
-import {FeeExemptions} from '@flaunch/hooks/FeeExemptions.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {FeeExemptions} from '@flaunch/hooks/FeeExemptions.sol';
+import {InternalSwapPool} from '@flaunch/hooks/InternalSwapPool.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract FeeExemptionsTest is FlaunchTest {
-
     using LPFeeLibrary for uint24;
     using PoolIdLibrary for PoolKey;
 
@@ -27,12 +25,26 @@ contract FeeExemptionsTest is FlaunchTest {
     // Store our memecoin created for the test
     address memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
         // Create our memecoin
-        memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         // Reference our `_poolKey` for later tests
         _poolKey = positionManager.poolKey(memecoin);
@@ -64,14 +76,16 @@ contract FeeExemptionsTest is FlaunchTest {
         // Ensure that the fee is invalid
         vm.assume(!_invalidFee.isValid());
 
-        vm.expectRevert(abi.encodeWithSelector(
-            FeeExemptions.FeeExemptionInvalid.selector, _invalidFee, LPFeeLibrary.MAX_LP_FEE
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeExemptions.FeeExemptionInvalid.selector, _invalidFee, LPFeeLibrary.MAX_LP_FEE)
+        );
 
         feeExemptions.setFeeExemption(_beneficiary, _invalidFee);
     }
 
-    function test_CannotSetFeeExemptionWithoutOwner(address _caller) public {
+    function test_CannotSetFeeExemptionWithoutOwner(
+        address _caller
+    ) public {
         // Ensure that the caller is not the owner
         vm.assume(_caller != feeExemptions.owner());
 
@@ -80,7 +94,9 @@ contract FeeExemptionsTest is FlaunchTest {
         feeExemptions.setFeeExemption(_caller, 0);
     }
 
-    function test_CanRemoveFeeExemption(address _beneficiary) public hasExemption(_beneficiary) {
+    function test_CanRemoveFeeExemption(
+        address _beneficiary
+    ) public hasExemption(_beneficiary) {
         vm.expectEmit();
         emit FeeExemptions.BeneficiaryFeeRemoved(_beneficiary);
         feeExemptions.removeFeeExemption(_beneficiary);
@@ -91,15 +107,18 @@ contract FeeExemptionsTest is FlaunchTest {
         assertEq(feeExemption.enabled, false);
     }
 
-    function test_CannotRemoveFeeExemptionOfUnknownBeneficiary(address _beneficiary) public {
-        vm.expectRevert(
-            abi.encodeWithSelector(FeeExemptions.NoBeneficiaryExemption.selector, _beneficiary)
-        );
+    function test_CannotRemoveFeeExemptionOfUnknownBeneficiary(
+        address _beneficiary
+    ) public {
+        vm.expectRevert(abi.encodeWithSelector(FeeExemptions.NoBeneficiaryExemption.selector, _beneficiary));
 
         feeExemptions.removeFeeExemption(_beneficiary);
     }
 
-    function test_CannotRemoveFeeExemptionWithoutOwner(address _caller, address _beneficiary) public hasExemption(_beneficiary) {
+    function test_CannotRemoveFeeExemptionWithoutOwner(
+        address _caller,
+        address _beneficiary
+    ) public hasExemption(_beneficiary) {
         // Ensure that the caller is not the owner
         vm.assume(_caller != feeExemptions.owner());
 
@@ -308,16 +327,16 @@ contract FeeExemptionsTest is FlaunchTest {
         );
     }
 
-    modifier hasExemption(address _beneficiary) {
+    modifier hasExemption(
+        address _beneficiary
+    ) {
         feeExemptions.setFeeExemption(_beneficiary, 0);
         _;
     }
 
-    function _swap(IPoolManager.SwapParams memory _swapParams) internal {
-        poolSwap.swap(
-            _poolKey,
-            _swapParams
-        );
+    function _swap(
+        IPoolManager.SwapParams memory _swapParams
+    ) internal {
+        poolSwap.swap(_poolKey, _swapParams);
     }
-
 }

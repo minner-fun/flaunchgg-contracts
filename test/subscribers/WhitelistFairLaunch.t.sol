@@ -1,24 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {CustomRevert} from '@uniswap/v4-core/src/libraries/CustomRevert.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {CustomRevert} from '@uniswap/v4-core/src/libraries/CustomRevert.sol';
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
-import {FlaunchZap} from '@flaunch/zaps/FlaunchZap.sol';
-import {Notifier} from '@flaunch/hooks/Notifier.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {Notifier} from '@flaunch/hooks/Notifier.sol';
 import {WhitelistFairLaunch} from '@flaunch/subscribers/WhitelistFairLaunch.sol';
+import {FlaunchZap} from '@flaunch/zaps/FlaunchZap.sol';
 import {WhitelistPoolSwap} from '@flaunch/zaps/WhitelistPoolSwap.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract WhitelistFairLaunchTest is FlaunchTest {
-
     /**
      * Whitelisted Addresses:
      *
@@ -50,7 +49,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
     });
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -84,7 +83,6 @@ contract WhitelistFairLaunchTest is FlaunchTest {
     /**
      * FlaunchZap
      */
-
     function test_FlaunchZap_CanFlaunch_WithWhitelist() public withSubscriber {
         _flaunchToken(VALID_MERKLE_ROOT, VALID_MERKLE_IPFS, 0, 0);
     }
@@ -118,7 +116,6 @@ contract WhitelistFairLaunchTest is FlaunchTest {
     /**
      * PoolSwap
      */
-
     function test_PoolSwap_CannotSwap_Whitelist_InFairLaunch() public withSubscriber {
         // Flaunch a token that is whitelisted
         PoolKey memory poolKey = _flaunchToken(VALID_MERKLE_ROOT, VALID_MERKLE_IPFS, 1 ether, 0);
@@ -136,10 +133,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
             )
         );
 
-        poolSwap.swap({
-            _key: poolKey,
-            _params: swapParams
-        });
+        poolSwap.swap({_key: poolKey, _params: swapParams});
 
         vm.stopPrank();
     }
@@ -153,10 +147,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         vm.startPrank(WHITELISTED_USER);
 
         // Action a swap that hits a non-whitelist token during fair launch
-        poolSwap.swap({
-            _key: poolKey,
-            _params: swapParams
-        });
+        poolSwap.swap({_key: poolKey, _params: swapParams});
 
         vm.stopPrank();
     }
@@ -182,10 +173,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
             )
         );
 
-        poolSwap.swap({
-            _key: poolKey,
-            _params: swapParams
-        });
+        poolSwap.swap({_key: poolKey, _params: swapParams});
 
         vm.stopPrank();
     }
@@ -193,17 +181,12 @@ contract WhitelistFairLaunchTest is FlaunchTest {
     /**
      * WhitelistPoolSwap
      */
-
     function test_WhitelistPoolSwap_CanSwap_NonWhitelist_InFairLaunch() public withSubscriber {
         // Flaunch a token that is not whitelisted
         PoolKey memory poolKey = _flaunchToken('', VALID_MERKLE_IPFS, 0, 0);
 
         // Action a swap that hits a non-whitelist token during fair launch
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: EMPTY_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: EMPTY_PROOF});
     }
 
     function test_WhitelistPoolSwap_CanSwap_NonWhitelist_AfterFairLaunch() public withSubscriber {
@@ -213,11 +196,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         vm.warp(block.timestamp + 30 days);
 
         // Action a swap that hits a non-whitelist token during fair launch
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: EMPTY_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: EMPTY_PROOF});
     }
 
     function test_WhitelistPoolSwap_CanSwap_Whitelist_InFairLaunch() public withSubscriber {
@@ -227,11 +206,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         vm.startPrank(WHITELISTED_USER);
 
         // Action a swap that hits a non-whitelist token during fair launch
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: WHITELISTED_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: WHITELISTED_PROOF});
 
         vm.stopPrank();
     }
@@ -245,11 +220,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         vm.startPrank(WHITELISTED_USER);
 
         // Action a swap that hits a non-whitelist token during fair launch
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: WHITELISTED_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: WHITELISTED_PROOF});
 
         vm.stopPrank();
     }
@@ -275,11 +246,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
             )
         );
 
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: WHITELISTED_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: WHITELISTED_PROOF});
 
         vm.stopPrank();
     }
@@ -297,11 +264,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         vm.startPrank(WHITELISTED_USER);
 
         // Action a swap that hits a non-whitelist token during fair launch
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: WHITELISTED_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: WHITELISTED_PROOF});
 
         vm.stopPrank();
     }
@@ -317,11 +280,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         vm.startPrank(WHITELISTED_USER);
 
         // Action a swap that hits a non-whitelist token during fair launch
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: WHITELISTED_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: WHITELISTED_PROOF});
 
         vm.stopPrank();
     }
@@ -334,11 +293,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
 
         // Action a swap that hits a non-whitelist token during fair launch
         vm.expectRevert(WhitelistPoolSwap.MerkleVerificationFailed.selector);
-        whitelistPoolSwap.swap({
-            _key: poolKey,
-            _params: swapParams,
-            _merkleProof: INVALID_PROOF
-        });
+        whitelistPoolSwap.swap({_key: poolKey, _params: swapParams, _merkleProof: INVALID_PROOF});
 
         vm.stopPrank();
     }
@@ -376,7 +331,6 @@ contract WhitelistFairLaunchTest is FlaunchTest {
     /**
      * WhitelistFairLaunch
      */
-
     function test_CanSubscribe() public {
         // Register our {Notifier} used by the {PositionManager}
         Notifier notifier = positionManager.notifier();
@@ -401,12 +355,15 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         notifier.subscribe(address(whitelistFairLaunch), '');
     }
 
-    function test_CanSetWhitelist(address _approvedCaller) public {
+    function test_CanSetWhitelist(
+        address _approvedCaller
+    ) public {
         // Approve our approved caller
         whitelistFairLaunch.setWhitelistZap(_approvedCaller, true);
 
         // Confirm that before the whitelist is set, we have an empty data struct
-        (bytes32 merkleRoot, string memory merkleIpfs, uint maxTokens, bool active, bool exists) = whitelistFairLaunch.whitelistMerkles(VALID_POOL_ID);
+        (bytes32 merkleRoot, string memory merkleIpfs, uint maxTokens, bool active, bool exists) =
+            whitelistFairLaunch.whitelistMerkles(VALID_POOL_ID);
         assertEq(merkleRoot, bytes32(''));
         assertEq(merkleIpfs, '');
         assertEq(maxTokens, 0);
@@ -506,7 +463,9 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         _setWhitelistPoolSwap(address(0));
     }
 
-    function test_CannotSetWhitelistPoolSwap_WithoutOwner(address _caller) public {
+    function test_CannotSetWhitelistPoolSwap_WithoutOwner(
+        address _caller
+    ) public {
         vm.assume(_caller != msg.sender);
 
         vm.startPrank(_caller);
@@ -517,7 +476,9 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function test_CanApproveWhitelistZap(address _whitelistZap) public {
+    function test_CanApproveWhitelistZap(
+        address _whitelistZap
+    ) public {
         // Confirm that the whitelist zap is not currently approved
         assertFalse(whitelistFairLaunch.whitelistZaps(_whitelistZap));
 
@@ -531,7 +492,9 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         assertTrue(whitelistFairLaunch.whitelistZaps(_whitelistZap));
     }
 
-    function test_CanApproveWhitelistZap_MultipleZaps(address[] calldata _zaps) public {
+    function test_CanApproveWhitelistZap_MultipleZaps(
+        address[] calldata _zaps
+    ) public {
         // Iterate through our addresses and approve them all
         for (uint i; i < _zaps.length; ++i) {
             whitelistFairLaunch.setWhitelistZap(_zaps[i], true);
@@ -553,7 +516,9 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         }
     }
 
-    function test_CanApproveWhitelistZap_MultipleTimes(address _whitelistZap) public {
+    function test_CanApproveWhitelistZap_MultipleTimes(
+        address _whitelistZap
+    ) public {
         // Confirm that the whitelist zap is not currently approved
         assertFalse(whitelistFairLaunch.whitelistZaps(_whitelistZap));
 
@@ -576,7 +541,9 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         assertTrue(whitelistFairLaunch.whitelistZaps(_whitelistZap));
     }
 
-    function test_CanUnapproveWhitelistZap(address _whitelistZap) public {
+    function test_CanUnapproveWhitelistZap(
+        address _whitelistZap
+    ) public {
         // Approve our whitelist zap address
         whitelistFairLaunch.setWhitelistZap(_whitelistZap, true);
 
@@ -593,7 +560,9 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         assertFalse(whitelistFairLaunch.whitelistZaps(_whitelistZap));
     }
 
-    function test_CannotSetWhitelistZap_WithoutOwner(address _caller) public {
+    function test_CannotSetWhitelistZap_WithoutOwner(
+        address _caller
+    ) public {
         vm.assume(_caller != address(this));
 
         vm.startPrank(_caller);
@@ -607,7 +576,9 @@ contract WhitelistFairLaunchTest is FlaunchTest {
     /**
      * Sets and asserts a whitelist pool swap call.
      */
-    function _setWhitelistPoolSwap(address _contract) internal {
+    function _setWhitelistPoolSwap(
+        address _contract
+    ) internal {
         // Confirm that the event is emitted correctly
         vm.expectEmit();
         emit WhitelistFairLaunch.WhitelistPoolSwapUpdated(_contract);
@@ -619,7 +590,12 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         assertEq(whitelistFairLaunch.whitelistPoolSwap(), _contract);
     }
 
-    function _flaunchToken(bytes32 _root, string memory _ipfs, uint _maxTokens, uint _msgValue) internal returns (PoolKey memory) {
+    function _flaunchToken(
+        bytes32 _root,
+        string memory _ipfs,
+        uint _maxTokens,
+        uint _msgValue
+    ) internal returns (PoolKey memory) {
         // Flaunch a whitelist pool
         (address memecoin,,) = flaunchZap.flaunch{value: _msgValue}({
             _flaunchParams: PositionManager.FlaunchParams({
@@ -637,11 +613,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
             }),
             _trustedFeeSigner: address(0),
             _premineSwapHookData: bytes(''),
-            _whitelistParams: FlaunchZap.WhitelistParams({
-                merkleRoot: _root,
-                merkleIPFSHash: _ipfs,
-                maxTokens: _maxTokens
-            }),
+            _whitelistParams: FlaunchZap.WhitelistParams({merkleRoot: _root, merkleIPFSHash: _ipfs, maxTokens: _maxTokens}),
             _airdropParams: FlaunchZap.AirdropParams({
                 airdropIndex: 0,
                 airdropAmount: 0,
@@ -673,5 +645,4 @@ contract WhitelistFairLaunchTest is FlaunchTest {
         positionManager.notifier().subscribe(address(whitelistFairLaunch), '');
         _;
     }
-
 }

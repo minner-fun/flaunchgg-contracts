@@ -9,9 +9,7 @@ import {SubscriberMock} from '../mocks/SubscriberMock.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract NotifierTest is FlaunchTest {
-
     SubscriberMock subscriber;
 
     Notifier notifier;
@@ -55,7 +53,6 @@ contract NotifierTest is FlaunchTest {
         emit SubscriberMock.Unubscribe();
 
         notifier.unsubscribe(address(subscriber));
-
     }
 
     function test_CanUnsubscribeUnknownAddress() public {
@@ -84,5 +81,4 @@ contract NotifierTest is FlaunchTest {
         // (use logs or specific assertions here if available)
         positionManager.emitPoolStateUpdate(POOL_ID);
     }
-
 }

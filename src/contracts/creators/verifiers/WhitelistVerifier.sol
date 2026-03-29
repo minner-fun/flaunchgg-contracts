@@ -5,23 +5,21 @@ import {Ownable} from '@solady/auth/Ownable.sol';
 
 import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
 
-
 /**
  * Verifier that checks if a sender is whitelisted for a specific memecoin.
  */
 contract WhitelistVerifier is IImportVerifier, Ownable {
-
     error ZeroAddress();
 
     event WhitelistUpdated(address indexed _sender, address indexed _memecoin);
 
     // Mapping from memecoin address to sender address to whitelist status
-    mapping (address _memecoin => address _sender) public whitelist;
+    mapping(address _memecoin => address _sender) public whitelist;
 
     /**
      * Sets the owner of the contract to the deployer.
      */
-    constructor () {
+    constructor() {
         _initializeOwner(msg.sender);
     }
 
@@ -54,5 +52,4 @@ contract WhitelistVerifier is IImportVerifier, Ownable {
     function isValid(address _memecoin, address _sender) public view override returns (bool) {
         return whitelist[_memecoin] == _sender;
     }
-
 }

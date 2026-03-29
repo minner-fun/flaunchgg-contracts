@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {CustomRevert} from '@uniswap/v4-core/src/libraries/CustomRevert.sol';
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
@@ -16,7 +17,6 @@ import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 import {FlaunchTest} from '../FlaunchTest.sol';
 
 contract TrustedSignerFeeCalculatorTest is FlaunchTest {
-
     /// Store the `tx.origin` we expect in tests
     address internal constant TX_ORIGIN = 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
 
@@ -51,7 +51,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         // it into flETH internally.
         deal(address(this), 1000e27 ether);
         deal(address(flETH), address(this), 1000e27 ether);
-        flETH.approve(address(poolSwap), type(uint256).max);
+        flETH.approve(address(poolSwap), type(uint).max);
 
         // {PoolManager} must have some initial flETH balance to serve `take()` requests in our hook
         deal(address(flETH), address(poolManager), 1000e27 ether);
@@ -143,7 +143,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -205,7 +205,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -229,7 +229,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -258,7 +258,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -281,7 +281,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -319,11 +319,8 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         (poolKey, memecoin) = _flaunchToken(false, 0, 0);
 
         // Make up some fair launch settings
-        TrustedSignerFeeCalculator.FairLaunchSettings memory settings = TrustedSignerFeeCalculator.FairLaunchSettings({
-            enabled: true,
-            walletCap: 10 ether,
-            txCap: 5 ether
-        });
+        TrustedSignerFeeCalculator.FairLaunchSettings memory settings =
+            TrustedSignerFeeCalculator.FairLaunchSettings({enabled: true, walletCap: 10 ether, txCap: 5 ether});
 
         // Confirm that we cannot set fair launch settings if the caller is not the creator
         vm.expectRevert(TrustedSignerFeeCalculator.CallerNotPositionManager.selector);
@@ -346,14 +343,14 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // First transaction: 3 ether (should succeed)
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount is updated correctly
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
 
@@ -364,14 +361,14 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Second transaction: 2 ether (should succeed, total: 5 ether)
         _trackSwap(poolKey, 2 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount is updated correctly
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 5 ether);
 
@@ -382,15 +379,17 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Third transaction: 1 ether (should fail, would exceed wallet cap of 5 ether: 5 + 1 = 6 > 5)
-        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0));
+        _expectWrappedErrorRevert(
+            abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0)
+        );
         _trackSwap(poolKey, 1 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount remains unchanged after failed transaction
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 5 ether);
     }
@@ -411,13 +410,15 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Transaction with 3 ether (should fail, exceeds tx cap of 2 ether)
-        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(
+            abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether)
+        );
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -437,14 +438,14 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Should succeed even with large amounts since caps are set to 0
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount is still tracked even when caps are bypassed
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
 
@@ -455,12 +456,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount continues to accumulate
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 6 ether);
     }
@@ -481,7 +482,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -506,7 +507,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -521,13 +522,15 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Second transaction: 4 ether (should fail, exceeds tx cap of 3 ether)
-        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 4 ether, 3 ether));
+        _expectWrappedErrorRevert(
+            abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 4 ether, 3 ether)
+        );
         _trackSwap(poolKey, 4 ether, hookData, TX_ORIGIN);
     }
 
@@ -547,17 +550,17 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // First wallet: 3 ether (should succeed)
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the first wallet's purchased amount
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
-        
+
         // Generate new signature for different wallet
         deadline = 1748952661;
         signature = _generateSignature(address(2), poolKey.toId(), deadline, signerPrivateKey);
@@ -565,17 +568,17 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Second wallet: 4 ether (should succeed, different wallet)
         _trackSwap(poolKey, 4 ether, hookData, address(2));
-        
+
         // Verify the second wallet's purchased amount
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), address(2)), 4 ether);
-        
+
         // Generate new signature for first wallet
         deadline = 1748952662;
         signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
@@ -583,18 +586,20 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // First wallet: 3 ether (should fail, would exceed wallet cap of 5 ether)
-        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(
+            abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether)
+        );
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the first wallet's purchased amount remains unchanged after failed transaction
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
-        
+
         // Verify the second wallet's purchased amount is unchanged
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), address(2)), 4 ether);
     }
@@ -616,7 +621,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -631,13 +636,15 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Should fail, exceeds tx cap
-        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(
+            abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether)
+        );
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -657,14 +664,14 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // First transaction: 3 ether (should succeed)
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount is updated correctly
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
 
@@ -675,15 +682,17 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Second transaction: 3 ether (should fail, would exceed wallet cap of 5 ether: 3 + 3 = 6 > 5)
-        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(
+            abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether)
+        );
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount remains unchanged after failed transaction
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
     }
@@ -704,7 +713,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -716,7 +725,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // First transaction: 3 ether (should succeed)
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount is updated correctly
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
 
@@ -727,7 +736,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -739,7 +748,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Second transaction: 2 ether (should succeed, exactly at wallet cap: 3 + 2 = 5)
         _trackSwap(poolKey, 2 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount is exactly at the cap
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 5 ether);
 
@@ -755,15 +764,17 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // Third transaction: 1 ether (should fail, would exceed wallet cap: 5 + 1 = 6 > 5)
-        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0));
+        _expectWrappedErrorRevert(
+            abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0)
+        );
         _trackSwap(poolKey, 1 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount remains unchanged after failed transaction
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 5 ether);
     }
@@ -784,14 +795,14 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // First transaction on first pool key: 3 ether
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amount for the first pool key
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
 
@@ -805,14 +816,14 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(secondPoolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
 
         // First transaction on second pool key: 2 ether
         _trackSwap(secondPoolKey, 2 ether, hookData, TX_ORIGIN);
-        
+
         // Verify the wallet purchased amounts are tracked separately
         assertEq(feeCalculator.walletPurchasedAmount(poolKey.toId(), TX_ORIGIN), 3 ether);
         assertEq(feeCalculator.walletPurchasedAmount(secondPoolKey.toId(), TX_ORIGIN), 2 ether);
@@ -833,14 +844,14 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        
+
         // Generate signature for the first pool
         bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(poolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -858,7 +869,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
                 poolId: PoolId.unwrap(secondPoolKey.toId()),
-                deadline: deadline, 
+                deadline: deadline,
                 signature: signature
             })
         );
@@ -881,11 +892,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         deadline = 1748952661;
         bytes memory signature = _generatePremineSignature(TX_ORIGIN, deadline, signerPrivateKey);
         bytes memory hookData = abi.encode(
-            address(0),
-            TrustedSignerFeeCalculator.PremineSignedMessage({
-                deadline: deadline, 
-                signature: signature
-            })
+            address(0), TrustedSignerFeeCalculator.PremineSignedMessage({deadline: deadline, signature: signature})
         );
 
         // Flaunch a memecoin with premine and trusted signer enabled
@@ -907,24 +914,24 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         deployCodeTo(
             'TrustedSignerFeeCalculator.sol',
             abi.encode(
-                0x79FC52701cD4BE6f9Ba9aDC94c207DE37e3314eb,  // flETH
-                0x4E7cB1e6800a7B297B38BddcecAF9Ca5b6616FDC   // PositionManager
+                0x79FC52701cD4BE6f9Ba9aDC94c207DE37e3314eb, // flETH
+                0x4E7cB1e6800a7B297B38BddcecAF9Ca5b6616FDC // PositionManager
             ),
             0x7c1A3Eb8d3Eb166B333b3a9bD40C5CA03931eB34
         );
-        
+
         vm.startPrank(0x498E93Bc04955fCBAC04BCF1a3BA792f01Dbaa96, 0x498E93Bc04955fCBAC04BCF1a3BA792f01Dbaa96);
 
         0x492E6456D9528771018DeB9E87ef7750EF184104.call(
             hex'24856bc300000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000210040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000005c00000000000000000000000000000000000000000000000000000000000000560000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003090c0f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000004600000000000000000000000000000000000000000000000000000000000000380000000000000000000000000000000000000000000000000000000000000002000000000000000000000000071eab7365e7ff1abcc993441846a85ec04a923e900000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000033b2e3c9fd0803ce80000000000000000000000000000000000000000000000033b2e3c9fd0803ce800000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000004bd2ca15286c96e4e731337de8b375da6841e88800000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000079fc52701cd4be6f9ba9adc94c207de37e3314eb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000004e7cb1e6800a7b297b38bddcecaf9ca5b6616fdc00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000688c7ad900000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000041c3fdcdaad1b4f1b9a86757ce21d24a8d36678ac00099d8565b5e628056ead7e26c29f40803507c40a75fd652a5c16b548a5396e06194250e9a12a88fb896de9b1b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000071eab7365e7ff1abcc993441846a85ec04a923e90000000000000000000000000000000000000000033b2e3c9fd0803ce800000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000498e93bc04955fcbac04bcf1a3ba792f01dbaa960000000000000000000000000000000000000000000000000000000000000000'
         );
 
-        vm.stopPrank();        
+        vm.stopPrank();
     }
 
     /**
      * Triggers a `trackSwap` call with the given hook data, amount and pool key.
-     * 
+     *
      * @param _poolKey The pool key to use for the swap
      * @param _amount The amount to swap
      * @param _hookData The hook data to track the swap with
@@ -947,7 +954,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
     /**
      * Generates a signature for a given wallet, poolId, deadline and private key.
-     * 
+     *
      * @param _wallet The wallet to generate a signature for
      * @param _poolId The pool id that this signature is valid for
      * @param _deadline The deadline for the signature
@@ -955,32 +962,41 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
      *
      * @return signature_ The encoded signature
      */
-    function _generateSignature(address _wallet, PoolId _poolId, uint _deadline, uint _privateKey) internal pure returns (bytes memory signature_) {
+    function _generateSignature(
+        address _wallet,
+        PoolId _poolId,
+        uint _deadline,
+        uint _privateKey
+    ) internal pure returns (bytes memory signature_) {
         bytes32 hash = keccak256(abi.encodePacked(_wallet, PoolId.unwrap(_poolId), _deadline));
-        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message); 
+        bytes32 message = keccak256(abi.encodePacked('\x19Ethereum Signed Message:\n32', hash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message);
         signature_ = abi.encodePacked(r, s, v);
     }
 
     /**
      * Generates a premine signature for a given wallet, deadline and private key.
-     * 
+     *
      * @param _wallet The wallet to generate a signature for
      * @param _deadline The deadline for the signature
      * @param _privateKey The private key to use to generate the signature
      *
      * @return signature_ The encoded signature
      */
-    function _generatePremineSignature(address _wallet, uint _deadline, uint _privateKey) internal pure returns (bytes memory signature_) {
+    function _generatePremineSignature(
+        address _wallet,
+        uint _deadline,
+        uint _privateKey
+    ) internal pure returns (bytes memory signature_) {
         bytes32 hash = keccak256(abi.encodePacked(_wallet, _deadline));
-        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+        bytes32 message = keccak256(abi.encodePacked('\x19Ethereum Signed Message:\n32', hash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message);
         signature_ = abi.encodePacked(r, s, v);
     }
 
     /**
      * Flaunches a memecoin with the given fair launch settings.
-     * 
+     *
      * @param _enabled Whether the fair launch settings are enabled
      * @param _walletCap The wallet cap for the fair launch
      * @param _txCap The transaction cap for the fair launch
@@ -988,7 +1004,11 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
      * @return poolKey_ The PoolKey of the memecoin
      * @return memecoin_ The address of the memecoin
      */
-    function _flaunchToken(bool _enabled, uint _walletCap, uint _txCap) internal returns (PoolKey memory poolKey_, address memecoin_) {
+    function _flaunchToken(
+        bool _enabled,
+        uint _walletCap,
+        uint _txCap
+    ) internal returns (PoolKey memory poolKey_, address memecoin_) {
         // Flaunch a memecoin
         memecoin_ = positionManager.flaunch(
             PositionManager.FlaunchParams({
@@ -1015,7 +1035,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
     /**
      * Flaunches a memecoin with the given fair launch settings and premine amount.
-     * 
+     *
      * @param _enabled Whether the fair launch settings are enabled
      * @param _walletCap The wallet cap for the fair launch
      * @param _txCap The transaction cap for the fair launch
@@ -1055,7 +1075,9 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         poolKey_ = positionManager.poolKey(memecoin_);
     }
 
-    function _expectWrappedErrorRevert(bytes memory _data) internal {
+    function _expectWrappedErrorRevert(
+        bytes memory _data
+    ) internal {
         vm.expectRevert(
             abi.encodeWithSelector(
                 CustomRevert.WrappedError.selector,
@@ -1066,5 +1088,4 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
             )
         );
     }
-
 }

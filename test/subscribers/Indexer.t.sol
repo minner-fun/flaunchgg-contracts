@@ -3,26 +3,27 @@ pragma solidity ^0.8.26;
 
 import 'forge-std/console.sol';
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {MockERC20} from '@uniswap/v4-core/lib/forge-std/src/mocks/MockERC20.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+
 import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
-import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
-import {IndexerSubscriber} from '@flaunch/subscribers/Indexer.sol';
+
 import {PositionManager} from '@flaunch/PositionManager.sol';
-import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+
 import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
+import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+import {IndexerSubscriber} from '@flaunch/subscribers/Indexer.sol';
 
 import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract IndexerTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     // Define our legacy struct
@@ -39,7 +40,7 @@ contract IndexerTest is FlaunchTest {
         bytes feeCalculatorParams;
     }
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -79,10 +80,7 @@ contract IndexerTest is FlaunchTest {
         uint[] memory tokenIds = new uint[](2);
         tokenIds[0] = tokenId1;
         tokenIds[1] = tokenId2;
-        indexParams[0] = IndexerSubscriber.AddIndexParams({
-            flaunch: address(flaunch),
-            tokenIds: tokenIds
-        });
+        indexParams[0] = IndexerSubscriber.AddIndexParams({flaunch: address(flaunch), tokenIds: tokenIds});
 
         indexer.addIndex(indexParams);
 
@@ -143,7 +141,8 @@ contract IndexerTest is FlaunchTest {
             positionManager.setInitialPrice(0xf318E170D10A1F0d9b57211e908a7f081123E7f6);
             vm.stopPrank();
 
-            // Flaunch a token. The configuration doesn't really matter, we just need to ensure that it is indexed correctly.
+            // Flaunch a token. The configuration doesn't really matter, we just need to ensure that it is indexed
+            // correctly.
             address memecoin = positionManager.flaunch(
                 PositionManager.FlaunchParams({
                     name: 'name',
@@ -193,14 +192,11 @@ contract IndexerTest is FlaunchTest {
             positionManager.setInitialPrice(0xf318E170D10A1F0d9b57211e908a7f081123E7f6);
             vm.stopPrank();
 
-            // Flaunch a token. The configuration doesn't really matter, we just need to ensure that it is indexed correctly.
+            // Flaunch a token. The configuration doesn't really matter, we just need to ensure that it is indexed
+            // correctly.
             positionManager.flaunch(
                 AnyPositionManager.FlaunchParams(
-                    memecoin,
-                    address(this),
-                    50_00,
-                    abi.encode(1000e6),
-                    abi.encode(false, 0, 0)
+                    memecoin, address(this), 50_00, abi.encode(1000e6), abi.encode(false, 0, 0)
                 )
             );
 
@@ -226,7 +222,21 @@ contract IndexerTest is FlaunchTest {
     }
 
     function _flaunchToken() internal returns (address memecoin_, uint tokenId_, PoolKey memory poolKey_) {
-        memecoin_ = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        memecoin_ = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                30 minutes,
+                0,
+                address(this),
+                50_00,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
         tokenId_ = flaunch.tokenId(memecoin_);
         poolKey_ = PoolKey({
             currency0: Currency.wrap(address(flETH)),
@@ -236,5 +246,4 @@ contract IndexerTest is FlaunchTest {
             hooks: IHooks(address(positionManager))
         });
     }
-
 }

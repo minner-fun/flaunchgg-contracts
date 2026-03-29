@@ -10,13 +10,11 @@ import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManager
 
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 
-
 /**
  * Extends functionality to allow the manager to allocate fees to creators that provide their
  * memestreams into the manager.
  */
 abstract contract SupportsCreatorTokens {
-
     using EnumerableSet for EnumerableSet.UintSet;
 
     error CreatorShareAlreadyInitialized();
@@ -43,31 +41,33 @@ abstract contract SupportsCreatorTokens {
     TreasuryManagerFactory internal immutable _treasuryManagerFactory;
 
     /// Stores an enumerable set of all creator's tokens
-    mapping (address _creator => EnumerableSet.UintSet _creatorTokens) internal _creatorTokens;
+    mapping(address _creator => EnumerableSet.UintSet _creatorTokens) internal _creatorTokens;
 
     /// Maps a flaunch contract and tokenId to an internal ID
-    mapping (uint _internalId => ITreasuryManager.FlaunchToken _flaunchToken) public internalIds;
-    mapping (address _flaunch => mapping (uint _tokenId => uint _internalId)) public flaunchTokenInternalIds;
+    mapping(uint _internalId => ITreasuryManager.FlaunchToken _flaunchToken) public internalIds;
+    mapping(address _flaunch => mapping(uint _tokenId => uint _internalId)) public flaunchTokenInternalIds;
 
     /// Maps a flaunch contract and tokenId to the creator
-    mapping (address _flaunch => mapping (uint _tokenId => address _creator)) public creator;
+    mapping(address _flaunch => mapping(uint _tokenId => address _creator)) public creator;
 
     /// Tracks the total claims for creators and tokens
-    mapping (address _creator => uint _claimed) public creatorTotalClaimed;
-    mapping (address _flaunch => mapping (uint _tokenId => uint _claimed)) public tokenTotalClaimed;
+    mapping(address _creator => uint _claimed) public creatorTotalClaimed;
+    mapping(address _flaunch => mapping(uint _tokenId => uint _claimed)) public tokenTotalClaimed;
 
     /// Internally caches the totalFeeAllocation claim checkpoints for pools
-    mapping (PoolId _poolId => uint _amount) internal _totalFeeAllocation;
+    mapping(PoolId _poolId => uint _amount) internal _totalFeeAllocation;
 
     /// Maps a FlaunchToken to a PoolId for simple lookups
-    mapping (uint _internalId => PoolId _poolId) public tokenPoolId;
+    mapping(uint _internalId => PoolId _poolId) public tokenPoolId;
 
     /**
      * Sets up the contract with the initial required contract addresses.
      *
      * @param treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      */
-    constructor (address treasuryManagerFactory) {
+    constructor(
+        address treasuryManagerFactory
+    ) {
         _treasuryManagerFactory = TreasuryManagerFactory(treasuryManagerFactory);
     }
 
@@ -76,7 +76,9 @@ abstract contract SupportsCreatorTokens {
      *
      * @param _creatorShare The percentage that creators will receive from their fees (5dp)
      */
-    function _setCreatorShare(uint _creatorShare) internal {
+    function _setCreatorShare(
+        uint _creatorShare
+    ) internal {
         // Ensure that the creator share has not already been initialized
         if (_creatorShareInitialized) {
             revert CreatorShareAlreadyInitialized();
@@ -102,15 +104,25 @@ abstract contract SupportsCreatorTokens {
      * @param _creator The creator of the FlaunchToken
      * @param _data Additional deposit data for the manager
      */
-    function _setCreatorToken(ITreasuryManager.FlaunchToken calldata _flaunchToken, address _creator, bytes calldata _data) internal {
+    function _setCreatorToken(
+        ITreasuryManager.FlaunchToken calldata _flaunchToken,
+        address _creator,
+        bytes calldata _data
+    ) internal {
         // Set the end-owner creator, ensuring that it is not a zero address
-        if (_creator == address(0)) revert InvalidCreatorAddress();
+        if (_creator == address(0)) {
+            revert InvalidCreatorAddress();
+        }
         creator[address(_flaunchToken.flaunch)][_flaunchToken.tokenId] = _creator;
 
-        // Capture the current `totalFeeAllocation` of the provided token. We cannot rely on the Flaunch contract to have the
-        // `poolId` function as this was introduced in Flaunch 1.1. For this reason, we must manually apply the same helper
+        // Capture the current `totalFeeAllocation` of the provided token. We cannot rely on the Flaunch contract to
+        // have the
+        // `poolId` function as this was introduced in Flaunch 1.1. For this reason, we must manually apply the same
+        // helper
         // function logic to determine it.
-        PoolId poolId = _flaunchToken.flaunch.positionManager().poolKey(_flaunchToken.flaunch.memecoin(_flaunchToken.tokenId)).toId();
+        PoolId poolId = _flaunchToken.flaunch.positionManager().poolKey(
+            _flaunchToken.flaunch.memecoin(_flaunchToken.tokenId)
+        ).toId();
         _totalFeeAllocation[poolId] = ManagerFeeEscrow.totalPoolFees(poolId);
 
         // Increment our internalId counter and set up our internal mappings
@@ -140,7 +152,9 @@ abstract contract SupportsCreatorTokens {
      *
      * @return flaunchTokens_ The FlaunchTokens belonging to the _creator
      */
-    function tokens(address _creator) public view returns (ITreasuryManager.FlaunchToken[] memory flaunchTokens_) {
+    function tokens(
+        address _creator
+    ) public view returns (ITreasuryManager.FlaunchToken[] memory flaunchTokens_) {
         uint creatorTokensLength = _creatorTokens[_creator].length();
         flaunchTokens_ = new ITreasuryManager.FlaunchToken[](creatorTokensLength);
         for (uint i; i < creatorTokensLength; ++i) {
@@ -157,7 +171,9 @@ abstract contract SupportsCreatorTokens {
      *
      * @return balance_ The amount of ETH available to claim by the `_recipient`
      */
-    function pendingCreatorFees(address _recipient) public view returns (uint balance_) {
+    function pendingCreatorFees(
+        address _recipient
+    ) public view returns (uint balance_) {
         if (creatorShare == 0) {
             return 0;
         }
@@ -180,7 +196,9 @@ abstract contract SupportsCreatorTokens {
      *
      * @return creatorAvailableClaim_ The amount claimed by the creator
      */
-    function _creatorClaim(ITreasuryManager.FlaunchToken memory _flaunchToken) internal returns (uint creatorAvailableClaim_) {
+    function _creatorClaim(
+        ITreasuryManager.FlaunchToken memory _flaunchToken
+    ) internal returns (uint creatorAvailableClaim_) {
         // Validate that the `msg.sender` is the stored creator for the claim
         if (msg.sender != creator[address(_flaunchToken.flaunch)][_flaunchToken.tokenId]) {
             revert InvalidClaimer();
@@ -218,7 +236,9 @@ abstract contract SupportsCreatorTokens {
      *
      * @return creatorFee_ The creator fee to be taken from the amount
      */
-    function getCreatorFee(uint _amount) public view returns (uint creatorFee_) {
+    function getCreatorFee(
+        uint _amount
+    ) public view returns (uint creatorFee_) {
         // If the creator has no share, then we can exit early
         if (creatorShare == 0) {
             return 0;
@@ -234,7 +254,9 @@ abstract contract SupportsCreatorTokens {
      *
      * @return poolId_ The corresponding PoolId
      */
-    function getPoolId(ITreasuryManager.FlaunchToken memory _flaunchToken) public view returns (PoolId poolId_) {
+    function getPoolId(
+        ITreasuryManager.FlaunchToken memory _flaunchToken
+    ) public view returns (PoolId poolId_) {
         // Find our internalId. If this cannot be found then we revert as it's an unknown token
         uint internalId = flaunchTokenInternalIds[address(_flaunchToken.flaunch)][_flaunchToken.tokenId];
         if (internalId == 0) {
@@ -243,5 +265,4 @@ abstract contract SupportsCreatorTokens {
 
         poolId_ = tokenPoolId[internalId];
     }
-
 }

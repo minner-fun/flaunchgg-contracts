@@ -5,30 +5,30 @@ import {SafeTransferLib} from '@solady/utils/SafeTransferLib.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
 import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
-import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
+
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
+import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
 
-import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
-
+import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 
 /**
  * This zap allows the creator to flaunch their coin, whilst also purchasing some of their
  * initial fair launch supply during the same transaction.
  */
 contract FlaunchPremineZap {
-
     using SafeCast for uint;
 
     /// The Flaunch {PositionManager} contract
@@ -49,12 +49,7 @@ contract FlaunchPremineZap {
      * @param _flETH Underlying flETH token
      * @param _poolSwap Swap contract
      */
-    constructor (
-        PositionManager _positionManager,
-        address _flaunchContract,
-        address _flETH,
-        PoolSwap _poolSwap
-    ) {
+    constructor(PositionManager _positionManager, address _flaunchContract, address _flETH, PoolSwap _poolSwap) {
         positionManager = _positionManager;
         flaunchContract = Flaunch(_flaunchContract);
         flETH = IFLETH(_flETH);
@@ -67,7 +62,9 @@ contract FlaunchPremineZap {
      * @return memecoin_ The created ERC20 token address
      * @return ethSpent_ The amount of ETH spent during the premine
      */
-    function flaunch(PositionManager.FlaunchParams calldata _params) external payable returns (address memecoin_, uint ethSpent_) {
+    function flaunch(
+        PositionManager.FlaunchParams calldata _params
+    ) external payable returns (address memecoin_, uint ethSpent_) {
         // Flaunch new token
         memecoin_ = positionManager.flaunch{value: msg.value}(_params);
 
@@ -144,9 +141,7 @@ contract FlaunchPremineZap {
             _params: IPoolManager.SwapParams({
                 zeroForOne: !flipped,
                 amountSpecified: _premineAmount.toInt256(),
-                sqrtPriceLimitX96: !flipped
-                    ? TickMath.MIN_SQRT_PRICE + 1
-                    : TickMath.MAX_SQRT_PRICE - 1
+                sqrtPriceLimitX96: !flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             })
         });
 
@@ -163,9 +158,14 @@ contract FlaunchPremineZap {
      *
      * @return ethRequired_ The amount of ETH that will be required
      */
-    function calculateFee(uint _premineAmount, uint _slippage, bytes calldata _initialPriceParams) public view returns (uint ethRequired_) {
+    function calculateFee(
+        uint _premineAmount,
+        uint _slippage,
+        bytes calldata _initialPriceParams
+    ) public view returns (uint ethRequired_) {
         // Market cap / total supply * premineAmount + swapFee
-        uint premineCost = positionManager.getFlaunchingMarketCap(_initialPriceParams) * _premineAmount / TokenSupply.INITIAL_SUPPLY;
+        uint premineCost =
+            positionManager.getFlaunchingMarketCap(_initialPriceParams) * _premineAmount / TokenSupply.INITIAL_SUPPLY;
 
         // Create a fake pool key, just to generate an non-existant ID to check against
         PoolKey memory fakePoolKey = PoolKey({
@@ -209,5 +209,4 @@ contract FlaunchPremineZap {
      * To receive ETH from flETH on withdraw.
      */
     receive() external payable {}
-
 }

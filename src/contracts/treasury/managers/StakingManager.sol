@@ -3,26 +3,24 @@ pragma solidity ^0.8.26;
 
 import {SafeTransferLib} from '@solady/utils/SafeTransferLib.sol';
 
-import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
-import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
 import {FixedPoint128} from '@uniswap/v4-core/src/libraries/FixedPoint128.sol';
+import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
 
-import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
 import {Flaunch} from '@flaunch/Flaunch.sol';
-
+import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
 
 /**
  * Allows Flaunch tokens to be locked inside a staking manager. The users can stake a defined ERC20
  * token and earn their share of ETH rewards from the memestreams.
- * 
+ *
  * The creator can specify the split % between themselves, the stakers and the creators.
- * 
+ *
  * The NFT and tokens are locked, based on the values set by the creator.
  */
 contract StakingManager is FeeSplitManager {
-
     using EnumerableSet for EnumerableSet.UintSet;
 
     error InsufficientBalance();
@@ -39,7 +37,7 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * Parameters passed during manager initialization.
-     * 
+     *
      * @member stakingToken The address of the token to be staked
      * @member minEscrowDuration The minimum duration that the creator's NFT is locked for
      * @member minStakeDuration The minimum duration that the user's tokens are locked for
@@ -56,7 +54,7 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * A struct that represents a user's position in the staking manager.
-     * 
+     *
      * @member amount The amount of tokens staked
      * @member timelockedUntil The timestamp until which the stake is locked
      * @member ethRewardsPerTokenSnapshotX128 The global ETH rewards per token snapshot,
@@ -89,7 +87,7 @@ contract StakingManager is FeeSplitManager {
     uint internal _lastWithdrawBalance;
 
     /// A mapping of user addresses to their position in the staking manager
-    mapping (address user => Position position) public userPositions;
+    mapping(address user => Position position) public userPositions;
 
     /**
      * Sets up the contract with the initial required contract addresses.
@@ -97,7 +95,10 @@ contract StakingManager is FeeSplitManager {
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      * @param _feeEscrowRegistry The {FeeEscrowRegistry} that will be used to withdraw fees
      */
-    constructor (address _treasuryManagerFactory, address _feeEscrowRegistry) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
+    constructor(
+        address _treasuryManagerFactory,
+        address _feeEscrowRegistry
+    ) FeeSplitManager(_treasuryManagerFactory, _feeEscrowRegistry) {
         // ..
     }
 
@@ -145,21 +146,19 @@ contract StakingManager is FeeSplitManager {
         tokenTimelock[address(_flaunchToken.flaunch)][_flaunchToken.tokenId] = escrowDuration;
 
         // Emit our escrow duration extended event
-        emit EscrowDurationExtended(
-            address(_flaunchToken.flaunch),
-            _flaunchToken.tokenId,
-            escrowDuration
-        );
+        emit EscrowDurationExtended(address(_flaunchToken.flaunch), _flaunchToken.tokenId, escrowDuration);
     }
 
     /**
      * Allows the creator to withdraw their NFT, once the escrow lock has passed.
-     * 
+     *
      * @dev This function is only callable by the creator of the token.
-     * 
+     *
      * @param _flaunchToken The token to withdraw
      */
-    function escrowWithdraw(FlaunchToken calldata _flaunchToken) public {
+    function escrowWithdraw(
+        FlaunchToken calldata _flaunchToken
+    ) public {
         // Get the creator of the Flaunch token and ensure they are the caller
         address tokenCreator = _onlyTokenCreator(_flaunchToken);
 
@@ -181,9 +180,9 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * Allows the creator to extend their escrow lock duration.
-     * 
+     *
      * @dev This function is only callable by the creator of the token.
-     * 
+     *
      * @param _flaunchToken The token to extend the escrow lock for
      * @param _extendBy The amount of time to extend the escrow by
      */
@@ -204,10 +203,12 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * Allows a user to stake their tokens into the staking manager.
-     * 
+     *
      * @param _amount The amount of tokens to stake
      */
-    function stake(uint _amount) external nonReentrant {
+    function stake(
+        uint _amount
+    ) external nonReentrant {
         // Prevent a zero amount stake
         if (_amount == 0) {
             revert InvalidStakeAmount();
@@ -239,14 +240,16 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * Allows a user to unstake their tokens from the staking manager.
-     * 
+     *
      * @dev Claims any pending ETH rewards before unstaking as well.
-     * 
+     *
      * @dev Nonrentrant is enacted via the internally called`claim` function.
-     * 
+     *
      * @param _amount The amount of tokens to unstake
      */
-    function unstake(uint _amount) external {
+    function unstake(
+        uint _amount
+    ) external {
         // Prevent a zero amount unstake
         if (_amount == 0) {
             revert InvalidUnstakeAmount();
@@ -256,10 +259,14 @@ contract StakingManager is FeeSplitManager {
         Position storage position = userPositions[msg.sender];
 
         // Ensure that the stake is not locked
-        if (block.timestamp < position.timelockedUntil) revert StakeLocked();
+        if (block.timestamp < position.timelockedUntil) {
+            revert StakeLocked();
+        }
 
         // Ensure that the user has enough balance
-        if (_amount > position.amount) revert InsufficientBalance();
+        if (_amount > position.amount) {
+            revert InsufficientBalance();
+        }
 
         // Claim any pending rewards for the caller
         claim();
@@ -331,18 +338,16 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * View the stake information for a user.
-     * 
+     *
      * @param _user The address of the user to view the stake information for
-     * 
+     *
      * @return amount_ The amount of tokens staked
      * @return timelockedUntil_ The timestamp until which the stake is locked
      * @return pendingETHRewards_ The pending ETH rewards for the user
      */
-    function getUserStakeInfo(address _user) external view returns (
-        uint amount_,
-        uint timelockedUntil_,
-        uint pendingETHRewards_
-    ) {
+    function getUserStakeInfo(
+        address _user
+    ) external view returns (uint amount_, uint timelockedUntil_, uint pendingETHRewards_) {
         // Get the user's position
         Position memory position = userPositions[_user];
         (uint stakeBalance,,) = _balances(_user);
@@ -359,7 +364,9 @@ contract StakingManager is FeeSplitManager {
      *
      * @return balance_ The amount of ETH available to claim by the `_recipient`
      */
-    function balances(address _recipient) public view override returns (uint balance_) {
+    function balances(
+        address _recipient
+    ) public view override returns (uint balance_) {
         // Get the total ETH owed to the user from their staked position
         (uint stakeBalance, uint creatorBalance, uint ownerBalance) = _balances(_recipient);
         balance_ = stakeBalance + creatorBalance + ownerBalance;
@@ -375,7 +382,9 @@ contract StakingManager is FeeSplitManager {
      * @return creatorBalance_ The balance available from creator fees
      * @return ownerBalance_ The balance available from owner fees
      */
-    function _balances(address _recipient) internal view returns (uint stakeBalance_, uint creatorBalance_, uint ownerBalance_) {
+    function _balances(
+        address _recipient
+    ) internal view returns (uint stakeBalance_, uint creatorBalance_, uint ownerBalance_) {
         // Get the total ETH owed to the user from their staked position
         stakeBalance_ = _stakeRewardsBalance(_recipient);
 
@@ -392,7 +401,7 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * Allows the contract to withdraw any pending ETH fees.
-     * 
+     *
      * @dev This function is called before each operation: stake, unstake, and claim.
      */
     function _withdrawFees() internal {
@@ -425,23 +434,22 @@ contract StakingManager is FeeSplitManager {
     /**
      * Calculates the stake rewards available for a user, based on their position and the global ETH rewards per
      * token snapshot.
-     * 
+     *
      * @param _recipient The address of the user to calculate the stake rewards for
      *
      * @return The total stake rewards available to the user
      */
-    function _stakeRewardsBalance(address _recipient) internal view returns (uint) {
+    function _stakeRewardsBalance(
+        address _recipient
+    ) internal view returns (uint) {
         // Get the user's position
         Position memory position = userPositions[_recipient];
 
         // Calculate the latest global ETH rewards per token snapshot
         uint latestGlobalEthRewardsPerTokenX128 = globalEthRewardsPerTokenX128;
         if (totalDeposited != 0) {
-            latestGlobalEthRewardsPerTokenX128 += FullMath.mulDiv(
-                managerFees() - _lastWithdrawBalance,
-                FixedPoint128.Q128,
-                totalDeposited
-            );
+            latestGlobalEthRewardsPerTokenX128 +=
+                FullMath.mulDiv(managerFees() - _lastWithdrawBalance, FixedPoint128.Q128, totalDeposited);
         }
 
         // Calculate the stake rewards available to the user based on pending rewards and their current ETH owed
@@ -454,18 +462,19 @@ contract StakingManager is FeeSplitManager {
 
     /**
      * Checks if the caller is the creator of the token.
-     * 
+     *
      * @dev This function will revert if the caller is not the creator of the token.
-
+     *
      * @param _flaunchToken The token to check the creator of
-     * 
+     *
      * @return tokenCreator The address of the token creator
      */
-    function _onlyTokenCreator(FlaunchToken calldata _flaunchToken) internal view returns (address tokenCreator) {
+    function _onlyTokenCreator(
+        FlaunchToken calldata _flaunchToken
+    ) internal view returns (address tokenCreator) {
         tokenCreator = creator[address(_flaunchToken.flaunch)][_flaunchToken.tokenId];
         if (msg.sender != tokenCreator) {
             revert InvalidCreatorAddress();
         }
     }
-
 }

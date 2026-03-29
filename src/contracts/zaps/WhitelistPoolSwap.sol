@@ -3,20 +3,18 @@ pragma solidity ^0.8.26;
 
 import {MerkleProofLib} from '@solady/utils/MerkleProofLib.sol';
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {WhitelistFairLaunch} from '@flaunch/subscribers/WhitelistFairLaunch.sol';
 import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
 
-
 /**
  * Handles swaps against Uniswap V4 pools whilst also checking an optional whitelist.
  */
 contract WhitelistPoolSwap is PoolSwap {
-
     using PoolIdLibrary for PoolKey;
 
     error MerkleVerificationFailed();
@@ -26,14 +24,14 @@ contract WhitelistPoolSwap is PoolSwap {
     WhitelistFairLaunch public immutable whitelistFairLaunch;
 
     /// Stores the amount of tokens a user has claimed from each whitelist
-    mapping (PoolId _poolId => mapping (address _recipient => uint _tokensClaimed)) public tokensClaimed;
+    mapping(PoolId _poolId => mapping(address _recipient => uint _tokensClaimed)) public tokensClaimed;
 
     /**
      * Register our Uniswap V4 {PoolManager}.
      *
      * @param _manager The Uniswap V4 {PoolManager}
      */
-    constructor (IPoolManager _manager, address _whitelistFairLaunch) PoolSwap(_manager) {
+    constructor(IPoolManager _manager, address _whitelistFairLaunch) PoolSwap(_manager) {
         whitelistFairLaunch = WhitelistFairLaunch(_whitelistFairLaunch);
     }
 
@@ -80,10 +78,8 @@ contract WhitelistPoolSwap is PoolSwap {
         }
 
         // Action the swap which should now be whitelisted
-        delta_ = abi.decode(
-            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _hookData))),
-            (BalanceDelta)
-        );
+        delta_ =
+            abi.decode(manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _hookData))), (BalanceDelta));
 
         // Increase the amount of tokens that the user has claimed
         tokensClaimed[poolId][msg.sender] += uint(-int(delta_.amount0() < 0 ? delta_.amount0() : delta_.amount1()));
@@ -99,16 +95,26 @@ contract WhitelistPoolSwap is PoolSwap {
     /**
      * Routes the existing swap logic that is inherited through the merkle approach.
      */
-    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params) public payable override returns (BalanceDelta) {
+    function swap(
+        PoolKey memory _key,
+        IPoolManager.SwapParams memory _params
+    ) public payable override returns (BalanceDelta) {
         return swap(_key, _params, new bytes32[](0), bytes(''));
     }
 
-    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, address _referrer) public payable override returns (BalanceDelta) {
+    function swap(
+        PoolKey memory _key,
+        IPoolManager.SwapParams memory _params,
+        address _referrer
+    ) public payable override returns (BalanceDelta) {
         return swap(_key, _params, new bytes32[](0), _referrer == address(0) ? bytes('') : abi.encode(_referrer));
     }
 
-    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, bytes memory _hookData) public payable override returns (BalanceDelta delta_) {
+    function swap(
+        PoolKey memory _key,
+        IPoolManager.SwapParams memory _params,
+        bytes memory _hookData
+    ) public payable override returns (BalanceDelta delta_) {
         return swap(_key, _params, new bytes32[](0), _hookData);
     }
-
 }

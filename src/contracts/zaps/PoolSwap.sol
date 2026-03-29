@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {IUnlockCallback} from '@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
 import {TransientStateLibrary} from '@uniswap/v4-core/src/libraries/TransientStateLibrary.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
-
 
 /**
  * Handles swaps against Uniswap V4 pools.
@@ -19,7 +19,6 @@ import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
  * requirements.
  */
 contract PoolSwap is IUnlockCallback {
-
     using CurrencySettler for Currency;
     using Hooks for IHooks;
     using TransientStateLibrary for IPoolManager;
@@ -47,7 +46,9 @@ contract PoolSwap is IUnlockCallback {
      *
      * @param _manager The Uniswap V4 {PoolManager}
      */
-    constructor (IPoolManager _manager) {
+    constructor(
+        IPoolManager _manager
+    ) {
         manager = _manager;
     }
 
@@ -59,7 +60,10 @@ contract PoolSwap is IUnlockCallback {
      *
      * @return The BalanceDelta of the swap
      */
-    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params) public payable virtual returns (BalanceDelta) {
+    function swap(
+        PoolKey memory _key,
+        IPoolManager.SwapParams memory _params
+    ) public payable virtual returns (BalanceDelta) {
         return swap(_key, _params, address(0));
     }
 
@@ -72,9 +76,17 @@ contract PoolSwap is IUnlockCallback {
      *
      * @return delta_ The BalanceDelta of the swap
      */
-    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, address _referrer) public payable virtual returns (BalanceDelta delta_) {
+    function swap(
+        PoolKey memory _key,
+        IPoolManager.SwapParams memory _params,
+        address _referrer
+    ) public payable virtual returns (BalanceDelta delta_) {
         delta_ = abi.decode(
-            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _referrer == address(0) ? bytes('') : abi.encode(_referrer)))),
+            manager.unlock(
+                abi.encode(
+                    CallbackData(msg.sender, _key, _params, _referrer == address(0) ? bytes('') : abi.encode(_referrer))
+                )
+            ),
             (BalanceDelta)
         );
     }
@@ -88,17 +100,21 @@ contract PoolSwap is IUnlockCallback {
      *
      * @return delta_ The BalanceDelta of the swap
      */
-    function swap(PoolKey memory _key, IPoolManager.SwapParams memory _params, bytes memory _hookData) public payable virtual returns (BalanceDelta delta_) {
-        delta_ = abi.decode(
-            manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _hookData))),
-            (BalanceDelta)
-        );
+    function swap(
+        PoolKey memory _key,
+        IPoolManager.SwapParams memory _params,
+        bytes memory _hookData
+    ) public payable virtual returns (BalanceDelta delta_) {
+        delta_ =
+            abi.decode(manager.unlock(abi.encode(CallbackData(msg.sender, _key, _params, _hookData))), (BalanceDelta));
     }
 
     /**
      * Performs the swap call using information from the CallbackData.
      */
-    function unlockCallback(bytes calldata rawData) external returns (bytes memory) {
+    function unlockCallback(
+        bytes calldata rawData
+    ) external returns (bytes memory) {
         // Ensure that the {PoolManager} has sent the message
         require(msg.sender == address(manager));
 
@@ -112,11 +128,7 @@ contract PoolSwap is IUnlockCallback {
         require(deltaBefore1 == 0, 'deltaBefore1 is not equal to 0');
 
         // Action the swap
-        BalanceDelta delta = manager.swap({
-            key: data.key,
-            params: data.params,
-            hookData: data.hookData
-        });
+        BalanceDelta delta = manager.swap({key: data.key, params: data.params, hookData: data.hookData});
 
         int deltaAfter0 = manager.currencyDelta(address(this), data.key.currency0);
         int deltaAfter1 = manager.currencyDelta(address(this), data.key.currency1);
@@ -175,5 +187,4 @@ contract PoolSwap is IUnlockCallback {
 
         return abi.encode(delta);
     }
-
 }

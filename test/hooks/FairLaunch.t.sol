@@ -1,34 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {console2} from 'forge-std/console2.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {console2} from 'forge-std/console2.sol';
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {CustomRevert} from '@uniswap/v4-core/src/libraries/CustomRevert.sol';
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+
+import {Flaunch} from '@flaunch/Flaunch.sol';
+
+import {PositionManager} from '@flaunch/PositionManager.sol';
 import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {FeeDistributor} from '@flaunch/hooks/FeeDistributor.sol';
-import {Flaunch} from '@flaunch/Flaunch.sol';
-import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
+import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
 import {StaticFeeCalculator} from '@flaunch/fees/StaticFeeCalculator.sol';
+import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
 import {toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 
-
 contract FairLaunchTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     /// Store the `tx.origin` we expect in tests
@@ -45,28 +45,32 @@ contract FairLaunchTest is FlaunchTest {
     address MEMECOIN_UNFLIPPED = 0xF2C9428E4C5657e1Ea0c45C3ffD227025CA05f00;
     address MEMECOIN_FLIPPED = 0xEC82FeB3eD96601CeB4563EA04Fa9A89b12b9D7a;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
         // Set our expected PoolKey. The `currency1` address is the deterministic address of the `Memecoin`
         // that will be created when we run `positionManager.flaunch`.
-        EXPECTED_POOL_KEY = _normalizePoolKey(PoolKey({
-            currency0: Currency.wrap(address(WETH)),
-            currency1: Currency.wrap(MEMECOIN_UNFLIPPED),
-            fee: 0,
-            tickSpacing: 60,
-            hooks: IHooks(address(positionManager))
-        }));
+        EXPECTED_POOL_KEY = _normalizePoolKey(
+            PoolKey({
+                currency0: Currency.wrap(address(WETH)),
+                currency1: Currency.wrap(MEMECOIN_UNFLIPPED),
+                fee: 0,
+                tickSpacing: 60,
+                hooks: IHooks(address(positionManager))
+            })
+        );
         EXPECTED_POOL_ID = EXPECTED_POOL_KEY.toId();
 
-        EXPECTED_FLIPPED_POOL_KEY = _normalizePoolKey(PoolKey({
-            currency0: Currency.wrap(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF),
-            currency1: Currency.wrap(MEMECOIN_FLIPPED),
-            fee: 0,
-            tickSpacing: 60,
-            hooks: IHooks(address(positionManager))
-        }));
+        EXPECTED_FLIPPED_POOL_KEY = _normalizePoolKey(
+            PoolKey({
+                currency0: Currency.wrap(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF),
+                currency1: Currency.wrap(MEMECOIN_FLIPPED),
+                fee: 0,
+                tickSpacing: 60,
+                hooks: IHooks(address(positionManager))
+            })
+        );
         EXPECTED_FLIPPED_POOL_ID = EXPECTED_FLIPPED_POOL_KEY.toId();
     }
 
@@ -79,30 +83,77 @@ contract FairLaunchTest is FlaunchTest {
             emit PositionManager.PoolStateUpdated(EXPECTED_POOL_ID, 112045541949572279837463876454, 6931, 0, 0, 0);
         } else {
             vm.expectEmit();
-            emit PositionManager.PoolStateUpdated(EXPECTED_FLIPPED_POOL_ID, 56022770974786139918731938227, -6932, 0, 0, 0);
+            emit PositionManager.PoolStateUpdated(
+                EXPECTED_FLIPPED_POOL_ID, 56022770974786139918731938227, -6932, 0, 0, 0
+            );
         }
 
         // Create our Memecoin
-        address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', _supply, FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        address memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                _supply,
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         // Confirm the balances of our two contracts
         assertEq(IERC20(memecoin).balanceOf(address(positionManager)), TokenSupply.INITIAL_SUPPLY);
         assertEq(IERC20(memecoin).balanceOf(address(poolManager)), 0);
     }
 
-    function test_CannotCreateFairLaunchPoolWithHighInitialSupply(uint _supply, bool _flipped) public flipTokens(_flipped) {
+    function test_CannotCreateFairLaunchPoolWithHighInitialSupply(
+        uint _supply,
+        bool _flipped
+    ) public flipTokens(_flipped) {
         // Ensure we have an invalid initial supply
         vm.assume(_supply > flaunch.MAX_FAIR_LAUNCH_TOKENS());
 
         vm.expectRevert(abi.encodeWithSelector(Flaunch.InvalidInitialSupply.selector, _supply));
-        positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', _supply, FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                _supply,
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
     }
 
     function test_CanGetInsideFairLaunchWindow(uint _timestamp, bool _flipped) public flipTokens(_flipped) {
         vm.assume(_timestamp >= block.timestamp);
         vm.assume(_timestamp < block.timestamp + FAIR_LAUNCH_DURATION);
 
-        positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         vm.warp(_timestamp);
         assertTrue(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
@@ -111,7 +162,21 @@ contract FairLaunchTest is FlaunchTest {
     function test_CanGetOutsideFairLaunchWindow(uint48 _timestamp, bool _flipped) public flipTokens(_flipped) {
         vm.assume(_timestamp >= block.timestamp + FAIR_LAUNCH_DURATION);
 
-        positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         vm.warp(_timestamp);
         assertFalse(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
@@ -121,47 +186,47 @@ contract FairLaunchTest is FlaunchTest {
     // function test_Debug_CanRebalancePoolAfterFairLaunch_Flipped() public flipTokens(true) {
     //     uint _flSupplyPercent = 3;
     //     uint _flETHBuy = 24959;
-        
+
     //     console.log("=== DEBUG TEST: Specific Failure Case ===");
     //     console.log("Flipped: true");
     //     console.log("Supply Percent:", _flSupplyPercent);
     //     console.log("ETH Buy Amount:", _flETHBuy);
     //     console.log("WETH Address:", address(WETH));
-        
+
     //     deal(address(WETH), address(poolManager), 1000e27 ether);
-        
+
     //     uint fairLaunchSupply = supplyShare(_flSupplyPercent);
     //     console.log("Fair Launch Supply:", fairLaunchSupply);
 
     //     // Create our memecoin
     //     address memecoin = positionManager.flaunch(
     //         PositionManager.FlaunchParams(
-    //             'name', 
-    //             'symbol', 
-    //             'https://token.gg/', 
-    //             fairLaunchSupply, 
-    //             FAIR_LAUNCH_DURATION, 
-    //             0, 
-    //             address(this), 
-    //             0, 
-    //             0, 
-    //             abi.encode(''), 
+    //             'name',
+    //             'symbol',
+    //             'https://token.gg/',
+    //             fairLaunchSupply,
+    //             FAIR_LAUNCH_DURATION,
+    //             0,
+    //             address(this),
+    //             0,
+    //             0,
+    //             abi.encode(''),
     //             abi.encode(1_000)
     //         )
     //     );
     //     console.log("Memecoin created:", memecoin);
-        
+
     //     // Check pool state
     //     PoolKey memory key = poolKey(true);
     //     PoolId pid = poolId(true);
     //     console.log("Pool ID:", uint256(PoolId.unwrap(pid)));
     //     console.log("Pool currency0:", Currency.unwrap(key.currency0));
     //     console.log("Pool currency1:", Currency.unwrap(key.currency1));
-        
+
     //     (uint160 sqrtPriceX96, int24 tick,,) = poolManager.getSlot0(pid);
     //     console.log("Pool sqrtPriceX96:", sqrtPriceX96);
     //     console.log("Pool tick:", int256(tick));
-        
+
     //     // Check if pool is initialized
     //     if (sqrtPriceX96 == 0) {
     //         console.log("ERROR: Pool is NOT initialized!");
@@ -184,7 +249,7 @@ contract FairLaunchTest is FlaunchTest {
     //         })
     //     );
     //     console.log("First swap completed");
-        
+
     //     // End Fair Launch
     //     vm.warp(block.timestamp + FAIR_LAUNCH_DURATION + 1);
     //     assertFalse(fairLaunch.inFairLaunchWindow(pid));
@@ -218,21 +283,35 @@ contract FairLaunchTest is FlaunchTest {
         uint _flSupplyPercent = 3;
         uint _flETHBuy = 24959;
 
-        console2.log("=== DEBUG TEST: Specific Failure Case ===");
-        console2.log("Flipped: true");
-        console2.log("Supply Percent:", _flSupplyPercent);
-        console2.log("ETH Buy Amount:", _flETHBuy);
-        console2.log("WETH Address:", address(WETH));
+        console2.log('=== DEBUG TEST: Specific Failure Case ===');
+        console2.log('Flipped: true');
+        console2.log('Supply Percent:', _flSupplyPercent);
+        console2.log('ETH Buy Amount:', _flETHBuy);
+        console2.log('WETH Address:', address(WETH));
 
-        deal(address(WETH), address(poolManager), 1000e27 ether);  // 作弊码，直接设置poolManager的WETH代币余额为10000e27
+        deal(address(WETH), address(poolManager), 1000e27 ether); // 作弊码，直接设置poolManager的WETH代币余额为10000e27
         // vm.assume(_flSupplyPercent > 0 && _flSupplyPercent < 69);
         // vm.assume(_flETHBuy > 0 && _flETHBuy < 1 ether);
         uint fairLaunchSupply = supplyShare(_flSupplyPercent);
-        console2.log("Fair Launch Supply:", fairLaunchSupply);
+        console2.log('Fair Launch Supply:', fairLaunchSupply);
         // vm.breakpoint("a");  // Checkpoint before creating memecoin
         // Create our memecoin
-        address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', fairLaunchSupply, FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
-        console2.log("Memecoin created:", memecoin);
+        address memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                fairLaunchSupply,
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
+        console2.log('Memecoin created:', memecoin);
 
         // Get the actual PoolKey for the created memecoin
         PoolKey memory actualPoolKey = positionManager.poolKey(memecoin);
@@ -243,7 +322,7 @@ contract FairLaunchTest is FlaunchTest {
         deal(address(WETH), address(this), 2 ether);
         WETH.approve(address(poolSwap), type(uint).max);
 
-        console2.log("Before swap");
+        console2.log('Before swap');
         // Action our swap during Fair Launch
         poolSwap.swap(
             actualPoolKey,
@@ -253,8 +332,8 @@ contract FairLaunchTest is FlaunchTest {
                 sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             })
         );
-        console2.log("After swap");
-        
+        console2.log('After swap');
+
         // End Fair Launch
         vm.warp(block.timestamp + FAIR_LAUNCH_DURATION + 1);
         assertFalse(fairLaunch.inFairLaunchWindow(actualPoolId));
@@ -277,13 +356,31 @@ contract FairLaunchTest is FlaunchTest {
         assertEq(IERC20(memecoin).balanceOf(positionManager.BURN_ADDRESS()), flSupplyToBurn, 'Invalid burn amount');
     }
 
-    function test_CanRebalancePoolAfterFairLaunch(bool _flipped, uint _flSupplyPercent, uint _flETHBuy) public flipTokens(_flipped) {
+    function test_CanRebalancePoolAfterFairLaunch(
+        bool _flipped,
+        uint _flSupplyPercent,
+        uint _flETHBuy
+    ) public flipTokens(_flipped) {
         deal(address(WETH), address(poolManager), 1000e27 ether);
         vm.assume(_flSupplyPercent > 0 && _flSupplyPercent < 69);
         vm.assume(_flETHBuy > 0 && _flETHBuy < 1 ether);
 
         // Create our memecoin
-        address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(_flSupplyPercent), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        address memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(_flSupplyPercent),
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         PoolKey memory actualPoolKey = positionManager.poolKey(memecoin);
         PoolId actualPoolId = actualPoolKey.toId();
@@ -301,7 +398,7 @@ contract FairLaunchTest is FlaunchTest {
                 sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             })
         );
-        
+
         // End Fair Launch
         vm.warp(block.timestamp + FAIR_LAUNCH_DURATION + 1);
         assertFalse(fairLaunch.inFairLaunchWindow(actualPoolId));
@@ -338,35 +435,43 @@ contract FairLaunchTest is FlaunchTest {
      *
      * The test suite is set up to understand that 1 ETH : 2 TOKEN (0.5 ETH : 1 TOKEN).
      */
-    function test_CanCaptureRevenueAndSupplyChange(bool _specified, bool _flipped, bool _fees) public flipTokens(_flipped) {
+    function test_CanCaptureRevenueAndSupplyChange(
+        bool _specified,
+        bool _flipped,
+        bool _fees
+    ) public flipTokens(_flipped) {
         // If we have no fees fuzzed, then we disable pool swap fees
         if (!_fees) {
             positionManager.setFeeDistribution(
-                FeeDistributor.FeeDistribution({
-                    swapFee: 0,
-                    referrer: 0,
-                    protocol: 0,
-                    active: true
-                })
+                FeeDistributor.FeeDistribution({swapFee: 0, referrer: 0, protocol: 0, active: true})
             );
         }
         // Otherwise, ensure that we send 100% to the protocol to avoid the bidWall share going
         // back into the `fairLaunchRevenue` due to the `bidWall` pre-allocation.
         else {
             positionManager.setFeeDistribution(
-                FeeDistributor.FeeDistribution({
-                    swapFee: 1_00,
-                    referrer: 0,
-                    protocol: 10_00,
-                    active: true
-                })
+                FeeDistributor.FeeDistribution({swapFee: 1_00, referrer: 0, protocol: 10_00, active: true})
             );
         }
 
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin
-        positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
         assertTrue(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
 
         // Give tokens and approve for swap
@@ -405,18 +510,31 @@ contract FairLaunchTest is FlaunchTest {
         assertEq(fairLaunchInfo.supply, supplyShare(50) - tokenOut, 'Invalid token');
 
         // Confirm we hold at least the expected revenue in the contract
-        assertGe(
-            IERC20(positionManager.getNativeToken()).balanceOf(address(positionManager)),
-            ethIn - fees
-        );
+        assertGe(IERC20(positionManager.getNativeToken()).balanceOf(address(positionManager)), ethIn - fees);
     }
 
     /// @dev This also test that we can sell after the Fair Launch window has ended
-    function test_CannotSellTokenDuringFairLaunchWindow(bool _flipped) public flipTokens(_flipped) {
+    function test_CannotSellTokenDuringFairLaunchWindow(
+        bool _flipped
+    ) public flipTokens(_flipped) {
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin
-        address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        address memecoin = positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         vm.warp(block.timestamp + FAIR_LAUNCH_DURATION - 1);
         assertTrue(fairLaunch.inFairLaunchWindow(poolId(_flipped)), 'Should be in fair launch');
@@ -473,11 +591,27 @@ contract FairLaunchTest is FlaunchTest {
         );
     }
 
-    function test_CanGetFeesFromFairLaunchSwap(bool _flipped) public flipTokens(_flipped) {
+    function test_CanGetFeesFromFairLaunchSwap(
+        bool _flipped
+    ) public flipTokens(_flipped) {
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin with tokens in fair launch
-        positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         // We should currently be within the FairLaunch window
         assertTrue(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
@@ -527,11 +661,27 @@ contract FairLaunchTest is FlaunchTest {
         }
     }
 
-    function test_CanBuyTokenAtSamePriceDuringFairLaunch(bool _flipped) public flipTokens(_flipped) {
+    function test_CanBuyTokenAtSamePriceDuringFairLaunch(
+        bool _flipped
+    ) public flipTokens(_flipped) {
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin with tokens in fair launch
-        positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         // We should currently be within the FairLaunch window
         assertTrue(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
@@ -587,7 +737,11 @@ contract FairLaunchTest is FlaunchTest {
             // Confirm that the expected people are holding the expected token balances
             assertEq(IERC20(memecoin).balanceOf(address(this)), i, 'Invalid user balance');
             assertEq(IERC20(memecoin).balanceOf(address(fairLaunch)), 0, 'Invalid FairLaunch balance');
-            assertEq(IERC20(memecoin).balanceOf(address(positionManager)), TokenSupply.INITIAL_SUPPLY - i, 'Invalid PositionManager balance');
+            assertEq(
+                IERC20(memecoin).balanceOf(address(positionManager)),
+                TokenSupply.INITIAL_SUPPLY - i,
+                'Invalid PositionManager balance'
+            );
             assertEq(IERC20(memecoin).balanceOf(address(poolManager)), 0, 'Invalid PoolManager balance');
 
             assertEq(WETH.balanceOf(address(this)), startBalance - ethSpent, 'Invalid user ETH balance');
@@ -603,11 +757,27 @@ contract FairLaunchTest is FlaunchTest {
         }
     }
 
-    function test_CanOverbuyFairLaunchPosition(bool _flipped) public flipTokens(_flipped) {
+    function test_CanOverbuyFairLaunchPosition(
+        bool _flipped
+    ) public flipTokens(_flipped) {
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin with tokens in fair launch
-        positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', 0.1e27, FAIR_LAUNCH_DURATION, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        positionManager.flaunch(
+            PositionManager.FlaunchParams(
+                'name',
+                'symbol',
+                'https://token.gg/',
+                0.1e27,
+                FAIR_LAUNCH_DURATION,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
+            )
+        );
 
         // We should currently be within the FairLaunch window
         assertTrue(fairLaunch.inFairLaunchWindow(poolId(_flipped)));
@@ -630,7 +800,11 @@ contract FairLaunchTest is FlaunchTest {
 
         uint ethSpent = startBalance - WETH.balanceOf(address(this));
 
-        assertEq(IERC20(_flipped ? MEMECOIN_FLIPPED : MEMECOIN_UNFLIPPED).balanceOf(address(this)), supplyShare(50), 'Invalid user balance');
+        assertEq(
+            IERC20(_flipped ? MEMECOIN_FLIPPED : MEMECOIN_UNFLIPPED).balanceOf(address(this)),
+            supplyShare(50),
+            'Invalid user balance'
+        );
         assertLt(WETH.balanceOf(address(this)), startBalance, 'Invalid user ETH balance');
 
         // Confirm the fair window is closed
@@ -666,10 +840,7 @@ contract FairLaunchTest is FlaunchTest {
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         initialPrice.setSqrtPriceX96(
-            InitialPrice.InitialSqrtPriceX96({
-                unflipped: FL_SQRT_PRICE_1_2,
-                flipped: FL_SQRT_PRICE_2_1
-            })
+            InitialPrice.InitialSqrtPriceX96({unflipped: FL_SQRT_PRICE_1_2, flipped: FL_SQRT_PRICE_2_1})
         );
 
         positionManager.flaunch(
@@ -701,17 +872,14 @@ contract FairLaunchTest is FlaunchTest {
                 sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             })
         );
-        console2.log("After swap");
+        console2.log('After swap');
     }
 
     function test_CanFairLaunchWithScheduledFlaunch() public {
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         initialPrice.setSqrtPriceX96(
-            InitialPrice.InitialSqrtPriceX96({
-                unflipped: FL_SQRT_PRICE_1_2,
-                flipped: FL_SQRT_PRICE_2_1
-            })
+            InitialPrice.InitialSqrtPriceX96({unflipped: FL_SQRT_PRICE_1_2, flipped: FL_SQRT_PRICE_2_1})
         );
 
         uint startsAt = block.timestamp + 6 hours;
@@ -835,7 +1003,7 @@ contract FairLaunchTest is FlaunchTest {
         FairLaunch.FairLaunchInfo memory info = fairLaunch.fairLaunchInfo(poolId(false));
         assertEq(info.startsAt, block.timestamp);
         assertEq(info.endsAt, block.timestamp);
-        assertEq(info.initialTick, 6931);  // Known due to constant test value
+        assertEq(info.initialTick, 6931); // Known due to constant test value
         assertEq(info.revenue, 0);
         assertEq(info.supply, 0);
         assertEq(info.closed, false);
@@ -860,7 +1028,7 @@ contract FairLaunchTest is FlaunchTest {
         // The information should all be the same as before, but it will now be closed
         assertEq(info.startsAt, block.timestamp);
         assertEq(info.endsAt, block.timestamp);
-        assertEq(info.initialTick, 6931);  // Known due to constant test value
+        assertEq(info.initialTick, 6931); // Known due to constant test value
         assertEq(info.revenue, 0);
         assertEq(info.supply, 0);
         assertEq(info.closed, true);
@@ -869,7 +1037,9 @@ contract FairLaunchTest is FlaunchTest {
         assertFalse(fairLaunch.inFairLaunchWindow(poolId(false)));
     }
 
-    function test_CanSetVariedFairLaunchDuration(uint _duration) public {
+    function test_CanSetVariedFairLaunchDuration(
+        uint _duration
+    ) public {
         // Ensure that we have a duration that is not zero. Any amount will be allowed.
         vm.assume(_duration != 0);
 
@@ -882,8 +1052,17 @@ contract FairLaunchTest is FlaunchTest {
         // Flaunch our token
         positionManager.flaunch(
             PositionManager.FlaunchParams(
-                'name', 'symbol', 'https://token.gg/', supplyShare(50), _duration, 0,
-                address(this), 0, 0, abi.encode(''), abi.encode(1_000)
+                'name',
+                'symbol',
+                'https://token.gg/',
+                supplyShare(50),
+                _duration,
+                0,
+                address(this),
+                0,
+                0,
+                abi.encode(''),
+                abi.encode(1_000)
             )
         );
 
@@ -918,7 +1097,7 @@ contract FairLaunchTest is FlaunchTest {
         positionManager.setFeeCalculator(staticFeeCalculator);
 
         // Create a signer and add it as a trusted signer for antibot protection
-        (address signer, uint signerPrivateKey) = makeAddrAndKey("trusted_signer");
+        (address signer, uint signerPrivateKey) = makeAddrAndKey('trusted_signer');
         trustedSignerFeeCalculator.addTrustedSigner(signer);
 
         // Use smaller, more manageable amounts
@@ -949,10 +1128,11 @@ contract FairLaunchTest is FlaunchTest {
 
         // Verify that fair launch settings are enabled
         {
-            (bool enabled, uint returnedWalletCap, uint returnedTxCap) = trustedSignerFeeCalculator.fairLaunchSettings(testPoolId);
-            assertTrue(enabled, "Fair launch settings should be enabled");
-            assertEq(returnedWalletCap, walletCap, "Wallet cap should be set correctly");
-            assertEq(returnedTxCap, txCap, "Transaction cap should be set correctly");
+            (bool enabled, uint returnedWalletCap, uint returnedTxCap) =
+                trustedSignerFeeCalculator.fairLaunchSettings(testPoolId);
+            assertTrue(enabled, 'Fair launch settings should be enabled');
+            assertEq(returnedWalletCap, walletCap, 'Wallet cap should be set correctly');
+            assertEq(returnedTxCap, txCap, 'Transaction cap should be set correctly');
         }
 
         // Generate a valid signature for the transaction
@@ -965,7 +1145,7 @@ contract FairLaunchTest is FlaunchTest {
         // Give this test contract some WETH to make the swap
         deal(address(flETH), address(this), 1000e29);
         flETH.approve(address(poolSwap), type(uint).max);
-        
+
         // Also ensure the poolManager has enough flETH to handle the swap
         deal(address(flETH), address(poolManager), 1000e29);
 
@@ -1023,7 +1203,7 @@ contract FairLaunchTest is FlaunchTest {
 
     /**
      * Generates a signature for a given wallet, poolId, deadline and private key.
-     * 
+     *
      * @param _wallet The wallet to generate a signature for
      * @param _poolId The pool id that this signature is valid for
      * @param _deadline The deadline for the signature
@@ -1031,19 +1211,27 @@ contract FairLaunchTest is FlaunchTest {
      *
      * @return signature_ The encoded signature
      */
-    function _generateSignature(address _wallet, PoolId _poolId, uint _deadline, uint _privateKey) internal pure returns (bytes memory signature_) {
+    function _generateSignature(
+        address _wallet,
+        PoolId _poolId,
+        uint _deadline,
+        uint _privateKey
+    ) internal pure returns (bytes memory signature_) {
         bytes32 hash = keccak256(abi.encodePacked(_wallet, PoolId.unwrap(_poolId), _deadline));
-        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message); 
+        bytes32 message = keccak256(abi.encodePacked('\x19Ethereum Signed Message:\n32', hash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message);
         signature_ = abi.encodePacked(r, s, v);
     }
 
-    function poolKey(bool _flipped) internal view returns (PoolKey memory) {
+    function poolKey(
+        bool _flipped
+    ) internal view returns (PoolKey memory) {
         return _flipped ? EXPECTED_FLIPPED_POOL_KEY : EXPECTED_POOL_KEY;
     }
 
-    function poolId(bool _flipped) internal view returns (PoolId) {
+    function poolId(
+        bool _flipped
+    ) internal view returns (PoolId) {
         return _flipped ? EXPECTED_FLIPPED_POOL_ID : EXPECTED_POOL_ID;
     }
-
 }

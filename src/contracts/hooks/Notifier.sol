@@ -9,13 +9,11 @@ import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
 import {ISubscriber} from '@flaunch-interfaces/ISubscriber.sol';
 
-
 /**
  * Notifier is used to opt in to sending updates to external contracts about position modifications
  * against a managed pool.
  */
 contract Notifier is Ownable {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error SubscriptionReverted();
@@ -34,7 +32,9 @@ contract Notifier is Ownable {
      *
      * @param _protocolOwner The initial EOA owner of the contract
      */
-    constructor (address _protocolOwner) {
+    constructor(
+        address _protocolOwner
+    ) {
         _positionManager = msg.sender;
 
         // Grant ownership permissions to the caller
@@ -65,7 +65,9 @@ contract Notifier is Ownable {
      *
      * @param _subscriber The address of the subscriber to unsubscribe
      */
-    function unsubscribe(address _subscriber) public onlyOwner {
+    function unsubscribe(
+        address _subscriber
+    ) public onlyOwner {
         // If we have referenced an empty index, prevent futher processing
         if (!subscribers.contains(_subscriber)) {
             return;
@@ -94,5 +96,4 @@ contract Notifier is Ownable {
             ISubscriber(subscribers.at(i)).notify(_poolId, _key, _data);
         }
     }
-
 }

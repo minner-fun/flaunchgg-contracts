@@ -8,13 +8,11 @@ import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {ManagerFeeEscrow} from '@flaunch/libraries/ManagerFeeEscrow.sol';
 import {TreasuryManager} from '@flaunch/treasury/managers/TreasuryManager.sol';
 
-
 /**
  * Acts as a middleware for revenue claims, allowing external protocols to build on top of Flaunch
  * and be able to have more granular control over the revenue yielded.
  */
 contract RevenueManager is TreasuryManager {
-
     using EnumerableSet for EnumerableSet.UintSet;
 
     error FailedToClaim();
@@ -57,24 +55,24 @@ contract RevenueManager is TreasuryManager {
     uint internal _nextInternalId;
 
     /// Stores an enumerable set of all creator's tokens
-    mapping (address _creator => EnumerableSet.UintSet _creatorTokens) internal _creatorTokens;
+    mapping(address _creator => EnumerableSet.UintSet _creatorTokens) internal _creatorTokens;
 
     /// Maps a flaunch contract and tokenId to an internal ID
-    mapping (uint _internalId => FlaunchToken _flaunchToken) public internalIds;
-    mapping (address _flaunch => mapping (uint _tokenId => uint _internalId)) public flaunchTokenInternalIds;
+    mapping(uint _internalId => FlaunchToken _flaunchToken) public internalIds;
+    mapping(address _flaunch => mapping(uint _tokenId => uint _internalId)) public flaunchTokenInternalIds;
 
     /// Maps a flaunch contract and tokenId to the creator
-    mapping (address _flaunch => mapping (uint _tokenId => address _creator)) public creator;
+    mapping(address _flaunch => mapping(uint _tokenId => address _creator)) public creator;
 
     /// Tracks the total claims for creators and tokens
-    mapping (address _creator => uint _claimed) public creatorTotalClaimed;
-    mapping (address _flaunch => mapping (uint _tokenId => uint _claimed)) public tokenTotalClaimed;
+    mapping(address _creator => uint _claimed) public creatorTotalClaimed;
+    mapping(address _flaunch => mapping(uint _tokenId => uint _claimed)) public tokenTotalClaimed;
 
     /// Internally caches the totalFeeAllocation claim checkpoints for pools
-    mapping (PoolId _poolId => uint _amount) internal _totalFeeAllocation;
+    mapping(PoolId _poolId => uint _amount) internal _totalFeeAllocation;
 
     /// Maps a FlaunchToken to a PoolId for simple lookups
-    mapping (uint _internalId => PoolId _poolId) public tokenPoolId;
+    mapping(uint _internalId => PoolId _poolId) public tokenPoolId;
 
     /**
      * Sets up the contract with the initial required contract addresses.
@@ -82,7 +80,10 @@ contract RevenueManager is TreasuryManager {
      * @param _treasuryManagerFactory The {TreasuryManagerFactory} that will launch this implementation
      * @param _feeEscrowRegistry The {FeeEscrowRegistry} that will be used to withdraw fees
      */
-    constructor (address _treasuryManagerFactory, address _feeEscrowRegistry) TreasuryManager(_treasuryManagerFactory, _feeEscrowRegistry) {
+    constructor(
+        address _treasuryManagerFactory,
+        address _feeEscrowRegistry
+    ) TreasuryManager(_treasuryManagerFactory, _feeEscrowRegistry) {
         // ..
     }
 
@@ -99,7 +100,9 @@ contract RevenueManager is TreasuryManager {
         (InitializeParams memory params) = abi.decode(_data, (InitializeParams));
 
         // Validate the protocol fee that has been passed
-        if (params.protocolFee > MAX_PROTOCOL_FEE) revert InvalidProtocolFee();
+        if (params.protocolFee > MAX_PROTOCOL_FEE) {
+            revert InvalidProtocolFee();
+        }
 
         // Set our protocol recipient
         protocolRecipient = params.protocolRecipient;
@@ -121,7 +124,9 @@ contract RevenueManager is TreasuryManager {
      */
     function _deposit(FlaunchToken calldata _flaunchToken, address _creator, bytes calldata _data) internal override {
         // Set the end-owner creator, ensuring that it is not a zero address
-        if (_creator == address(0)) revert InvalidCreatorAddress();
+        if (_creator == address(0)) {
+            revert InvalidCreatorAddress();
+        }
         creator[address(_flaunchToken.flaunch)][_flaunchToken.tokenId] = _creator;
 
         // Capture the current `totalFeeAllocation` of the provided token
@@ -155,7 +160,9 @@ contract RevenueManager is TreasuryManager {
      *
      * @return flaunchTokens_ The FlaunchTokens belonging to the _creator
      */
-    function tokens(address _creator) public view returns (FlaunchToken[] memory flaunchTokens_) {
+    function tokens(
+        address _creator
+    ) public view returns (FlaunchToken[] memory flaunchTokens_) {
         uint creatorTokensLength = _creatorTokens[_creator].length();
         flaunchTokens_ = new FlaunchToken[](creatorTokensLength);
         for (uint i; i < creatorTokensLength; ++i) {
@@ -173,7 +180,9 @@ contract RevenueManager is TreasuryManager {
      *
      * @return balance_ The amount of ETH available to claim by the `_recipient`
      */
-    function balances(address _recipient) public view returns (uint balance_) {
+    function balances(
+        address _recipient
+    ) public view returns (uint balance_) {
         // Get the fees for the manager
         uint managerFees = ManagerFeeEscrow.feeEscrowBalance(address(this));
 
@@ -222,7 +231,9 @@ contract RevenueManager is TreasuryManager {
         // Transfer the ETH to the sender
         if (amount_ != 0) {
             (bool success,) = payable(msg.sender).call{value: amount_}('');
-            if (!success) revert FailedToClaim();
+            if (!success) {
+                revert FailedToClaim();
+            }
         }
     }
 
@@ -233,7 +244,9 @@ contract RevenueManager is TreasuryManager {
      *
      * @return amount_ The amount of ETH claimed from fees
      */
-    function claim(FlaunchToken[] calldata _flaunchToken) public returns (uint amount_) {
+    function claim(
+        FlaunchToken[] calldata _flaunchToken
+    ) public returns (uint amount_) {
         // Withdraw fees earned from the held ERC721s, unwrapping into ETH. This will update
         // the `_protocolAvailableClaim` variable in the `receive` function callback.
         _withdrawAllFees(address(this), true);
@@ -247,7 +260,9 @@ contract RevenueManager is TreasuryManager {
         // Transfer the ETH to the creator
         if (amount_ != 0) {
             (bool success,) = payable(msg.sender).call{value: amount_}('');
-            if (!success) revert FailedToClaim();
+            if (!success) {
+                revert FailedToClaim();
+            }
         }
     }
 
@@ -279,7 +294,9 @@ contract RevenueManager is TreasuryManager {
      *
      * @return creatorAvailableClaim_ The amount claimed by the creator
      */
-    function _creatorClaim(FlaunchToken memory _flaunchToken) internal returns (uint creatorAvailableClaim_) {
+    function _creatorClaim(
+        FlaunchToken memory _flaunchToken
+    ) internal returns (uint creatorAvailableClaim_) {
         // Validate that the `msg.sender` is the stored creator for the claim
         if (msg.sender != creator[address(_flaunchToken.flaunch)][_flaunchToken.tokenId]) {
             revert InvalidClaimer();
@@ -319,7 +336,9 @@ contract RevenueManager is TreasuryManager {
      *
      * @param _protocolRecipient The new protocol recipient address
      */
-    function setProtocolRecipient(address payable _protocolRecipient) public onlyManagerOwner {
+    function setProtocolRecipient(
+        address payable _protocolRecipient
+    ) public onlyManagerOwner {
         protocolRecipient = _protocolRecipient;
         emit ProtocolRecipientUpdated(_protocolRecipient);
     }
@@ -366,7 +385,9 @@ contract RevenueManager is TreasuryManager {
      *
      * @return protocolFee_ The protocol fee to be taken from the amount
      */
-    function getProtocolFee(uint _amount) public view returns (uint protocolFee_) {
+    function getProtocolFee(
+        uint _amount
+    ) public view returns (uint protocolFee_) {
         return (_amount * protocolFee + MAX_PROTOCOL_FEE - 1) / MAX_PROTOCOL_FEE;
     }
 
@@ -377,7 +398,9 @@ contract RevenueManager is TreasuryManager {
      *
      * @return poolId_ The corresponding PoolId
      */
-    function getPoolId(FlaunchToken memory _flaunchToken) public view returns (PoolId poolId_) {
+    function getPoolId(
+        FlaunchToken memory _flaunchToken
+    ) public view returns (PoolId poolId_) {
         // Find our internalId. If this cannot be found then we revert as it's an unknown token
         uint internalId = flaunchTokenInternalIds[address(_flaunchToken.flaunch)][_flaunchToken.tokenId];
         if (internalId == 0) {
@@ -392,8 +415,7 @@ contract RevenueManager is TreasuryManager {
      * we need to add this to our totalClaimed amount. This allows us to receive ETH from
      * external sources that will also be distributed to our recipients.
      */
-    receive () external override payable {
+    receive() external payable override {
         _protocolAvailableClaim += getProtocolFee(msg.value);
     }
-
 }

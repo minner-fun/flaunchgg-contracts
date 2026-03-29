@@ -6,12 +6,10 @@ import {MarketCappedPriceV3} from '@flaunch/price/MarketCappedPriceV3.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 /**
  * @dev `forkBaseBlock` is currently timing out for tests, so they an skipped.
  */
 contract MarketCappedPriceV3Test is FlaunchTest {
-
     address owner = address(this);
 
     address internal constant ETH_TOKEN = 0x4200000000000000000000000000000000000006;
@@ -57,7 +55,9 @@ contract MarketCappedPriceV3Test is FlaunchTest {
         marketCappedPrice.setPool(0x4b0Aaf3EBb163dd45F663b38b6d93f6093EBC2d3);
     }
 
-    function test_CannotSetPoolIfNotOwner(address _notOwner) public {
+    function test_CannotSetPoolIfNotOwner(
+        address _notOwner
+    ) public {
         vm.assume(_notOwner != marketCappedPrice.owner());
 
         vm.prank(_notOwner);
@@ -109,19 +109,19 @@ contract MarketCappedPriceV3Test is FlaunchTest {
 
         // Our market cap should place the token at $5k~. This means that a 0.01% fee of this
         // should be around $5.
-        assertEq(
-            marketCappedPrice.getFlaunchingFee(address(this), abi.encode(5000e6)),
-            0.001597265310561477 ether
-        );
+        assertEq(marketCappedPrice.getFlaunchingFee(address(this), abi.encode(5000e6)), 0.001597265310561477 ether);
     }
 
-    function test_CannotGetMarketCapBelowThreshold(uint _marketCap) public {
+    function test_CannotGetMarketCapBelowThreshold(
+        uint _marketCap
+    ) public {
         vm.assume(_marketCap < marketCappedPrice.MINIMUM_USDC_MARKET_CAP());
 
-        vm.expectRevert(abi.encodeWithSelector(
-            MarketCappedPriceV3.MarketCapTooSmall.selector,
-            _marketCap, marketCappedPrice.MINIMUM_USDC_MARKET_CAP()
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MarketCappedPriceV3.MarketCapTooSmall.selector, _marketCap, marketCappedPrice.MINIMUM_USDC_MARKET_CAP()
+            )
+        );
 
         marketCappedPrice.getSqrtPriceX96(address(this), false, abi.encode(_marketCap));
     }
@@ -156,7 +156,9 @@ contract MarketCappedPriceV3Test is FlaunchTest {
         assertEq(marketCappedPrice.getFlaunchingFee(_excluded, abi.encode(5000e6)), fee);
     }
 
-    function test_CanSetFlaunchFeeThreshold(uint _newFlaunchFeeThreshold) public {
+    function test_CanSetFlaunchFeeThreshold(
+        uint _newFlaunchFeeThreshold
+    ) public {
         vm.expectEmit();
         emit MarketCappedPriceV3.FlaunchFeeThresholdUpdated(_newFlaunchFeeThreshold);
         marketCappedPrice.setFlaunchFeeThreshold(_newFlaunchFeeThreshold);
@@ -174,5 +176,4 @@ contract MarketCappedPriceV3Test is FlaunchTest {
 
         vm.stopPrank();
     }
-
 }

@@ -1,26 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {IHooks} from '@uniswap/v4-core/src/interfaces/IHooks.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {BuyBackManager} from '@flaunch/treasury/managers/BuyBackManager.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+import {BuyBackManager} from '@flaunch/treasury/managers/BuyBackManager.sol';
 import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
 import {SupportsCreatorTokens} from '@flaunch/treasury/managers/SupportsCreatorTokens.sol';
 import {SupportsOwnerFees} from '@flaunch/treasury/managers/SupportsOwnerFees.sol';
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
-import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 
 import {FlaunchTest} from 'test/FlaunchTest.sol';
 
-
 contract BuyBackManagerTest is FlaunchTest {
-
     // The treasury manager
     BuyBackManager managerImplementation;
 
@@ -86,7 +85,8 @@ contract BuyBackManagerTest is FlaunchTest {
         assertEq(buyBackManager.creatorShare(), _creatorShare, 'Invalid creatorShare');
         assertEq(buyBackManager.ownerShare(), _ownerShare, 'Invalid ownerShare');
 
-        (Currency currency0, Currency currency1, uint fee, int24 tickSpacing, IHooks hooks) = buyBackManager.buyBackPoolKey();
+        (Currency currency0, Currency currency1, uint fee, int24 tickSpacing, IHooks hooks) =
+            buyBackManager.buyBackPoolKey();
         assertEq(Currency.unwrap(currency0), address(flETH), 'Invalid currency0');
         assertEq(Currency.unwrap(currency1), address(mockToken), 'Invalid currency1');
         assertEq(fee, 0, 'Invalid fee');
@@ -94,14 +94,18 @@ contract BuyBackManagerTest is FlaunchTest {
         assertEq(address(hooks), address(positionManager), 'Invalid hooks');
     }
 
-    function test_CannotInitializeWithInvalidCreatorShare(uint _invalidShare) public {
+    function test_CannotInitializeWithInvalidCreatorShare(
+        uint _invalidShare
+    ) public {
         vm.assume(_invalidShare > MAX_SHARE);
 
         vm.expectRevert(abi.encodeWithSelector(SupportsCreatorTokens.InvalidCreatorShare.selector));
         _deployManager(_invalidShare, 0, buyBackPoolKey);
     }
 
-    function test_CannotInitializeWithInvalidOwnerShare(uint _invalidShare) public {
+    function test_CannotInitializeWithInvalidOwnerShare(
+        uint _invalidShare
+    ) public {
         vm.assume(_invalidShare > MAX_SHARE);
 
         vm.expectRevert(abi.encodeWithSelector(SupportsOwnerFees.InvalidOwnerShare.selector));
@@ -121,7 +125,9 @@ contract BuyBackManagerTest is FlaunchTest {
         _deployManager(_creatorShare, _ownerShare, buyBackPoolKey);
     }
 
-    function test_CanRouteBuyBack(uint _amount) public {
+    function test_CanRouteBuyBack(
+        uint _amount
+    ) public {
         // Ensure that the amount is not going to overflow liquidity
         vm.assume(_amount < type(uint32).max);
 
@@ -157,14 +163,16 @@ contract BuyBackManagerTest is FlaunchTest {
         managerImplementation.routeBuyBack();
     }
 
-    function _deployManager(uint _creatorShare, uint _ownerShare, PoolKey memory _buyBackPoolKey) internal returns (BuyBackManager manager_) {
+    function _deployManager(
+        uint _creatorShare,
+        uint _ownerShare,
+        PoolKey memory _buyBackPoolKey
+    ) internal returns (BuyBackManager manager_) {
         // Initialize our token
         address payable manager = treasuryManagerFactory.deployAndInitializeManager({
             _managerImplementation: address(managerImplementation),
             _owner: address(this),
-            _data: abi.encode(
-                BuyBackManager.InitializeParams(_creatorShare, _ownerShare, _buyBackPoolKey)
-            )
+            _data: abi.encode(BuyBackManager.InitializeParams(_creatorShare, _ownerShare, _buyBackPoolKey))
         });
 
         manager_ = BuyBackManager(manager);
@@ -177,7 +185,7 @@ contract BuyBackManagerTest is FlaunchTest {
         WETH.transfer(address(positionManager), _amount);
 
         positionManager.allocateFeesMock({
-            _poolId: PoolId.wrap(bytes32('1')),  // Can be mocked to anything
+            _poolId: PoolId.wrap(bytes32('1')), // Can be mocked to anything
             _recipient: payable(address(_buyBackManager)),
             _amount: _amount
         });

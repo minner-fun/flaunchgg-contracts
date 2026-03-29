@@ -1,25 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
+import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TreasuryActionManager} from '@flaunch/treasury/ActionManager.sol';
 import {BlankAction} from '@flaunch/treasury/actions/Blank.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract TreasuryActionManagerTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     BlankAction internal blankAction;
 
     address internal token;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -31,7 +29,9 @@ contract TreasuryActionManagerTest is FlaunchTest {
         assertEq(actionManager.owner(), address(this));
     }
 
-    function test_CanApproveAction(address _action) public {
+    function test_CanApproveAction(
+        address _action
+    ) public {
         // Approve the token
         vm.expectEmit();
         emit TreasuryActionManager.ActionApproved(_action);
@@ -43,7 +43,9 @@ contract TreasuryActionManagerTest is FlaunchTest {
         actionManager.approveAction(_action);
     }
 
-    function test_CannotApproveActionWithoutPermissions(address _action) public {
+    function test_CannotApproveActionWithoutPermissions(
+        address _action
+    ) public {
         vm.startPrank(address(1));
 
         vm.expectRevert();
@@ -52,7 +54,9 @@ contract TreasuryActionManagerTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function test_CanUnapproveAction(address _action) public {
+    function test_CanUnapproveAction(
+        address _action
+    ) public {
         // Unapprove the token when it is already approved
         vm.expectEmit();
         emit TreasuryActionManager.ActionUnapproved(_action);
@@ -67,7 +71,9 @@ contract TreasuryActionManagerTest is FlaunchTest {
         actionManager.unapproveAction(_action);
     }
 
-    function test_CannotUnapproveActionWithoutPermissions(address _action) public {
+    function test_CannotUnapproveActionWithoutPermissions(
+        address _action
+    ) public {
         actionManager.approveAction(_action);
 
         vm.startPrank(address(1));
@@ -78,7 +84,7 @@ contract TreasuryActionManagerTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    modifier flaunchToken {
+    modifier flaunchToken() {
         token = positionManager.flaunch(
             PositionManager.FlaunchParams({
                 name: 'Token Name',
@@ -97,5 +103,4 @@ contract TreasuryActionManagerTest is FlaunchTest {
 
         _;
     }
-
 }

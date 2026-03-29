@@ -4,9 +4,8 @@ pragma solidity ^0.8.26;
 import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
-import {BaseSubscriber} from '@flaunch/subscribers/Base.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
-
+import {BaseSubscriber} from '@flaunch/subscribers/Base.sol';
 
 /**
  * Prevents a user from flaunching a token that has no FairLaunch. The reasons for this are
@@ -19,7 +18,6 @@ import {PositionManager} from '@flaunch/PositionManager.sol';
  * that no fair launch supply was allocated then we revert.
  */
 contract PreventNoFairLaunch is BaseSubscriber {
-
     error InvalidInitialTokenFairLaunch(uint _invalidAmount, uint _minTokens);
 
     /// Set our minimum initial tokens to 1%
@@ -28,7 +26,9 @@ contract PreventNoFairLaunch is BaseSubscriber {
     /**
      * Sets our {Notifier} to parent contract to lock down calls.
      */
-    constructor (address _notifier) BaseSubscriber(_notifier) {
+    constructor(
+        address _notifier
+    ) BaseSubscriber(_notifier) {
         // ..
     }
 
@@ -39,7 +39,9 @@ contract PreventNoFairLaunch is BaseSubscriber {
      *
      * @dev This must return `true` to be subscribed.
      */
-    function subscribe(bytes memory /* _data */) public view override onlyNotifier returns (bool) {
+    function subscribe(
+        bytes memory /* _data */
+    ) public view override onlyNotifier returns (bool) {
         return true;
     }
 
@@ -50,22 +52,19 @@ contract PreventNoFairLaunch is BaseSubscriber {
      * @param _key The notification key
      * @param _data The data passed during initialization
      */
-    function notify(PoolId /* _poolId */, bytes4 _key, bytes calldata _data) public view override onlyNotifier {
+    function notify(PoolId, /* _poolId */ bytes4 _key, bytes calldata _data) public view override onlyNotifier {
         // We only want to deal with the `afterInitialize` key
         if (_key != IHooks.afterInitialize.selector) {
             return;
         }
 
         // Decode our parameters to get the Flaunch parameters
-        (/* uint tokenId */, PositionManager.FlaunchParams memory params) = abi.decode(
-            _data,
-            (uint, PositionManager.FlaunchParams)
-        );
+        ( /* uint tokenId */ , PositionManager.FlaunchParams memory params) =
+            abi.decode(_data, (uint, PositionManager.FlaunchParams));
 
         // If no initial token fair launch was allocated then revert
         if (params.initialTokenFairLaunch < MINIMUM_INITIAL_TOKENS) {
             revert InvalidInitialTokenFairLaunch(params.initialTokenFairLaunch, MINIMUM_INITIAL_TOKENS);
         }
     }
-
 }

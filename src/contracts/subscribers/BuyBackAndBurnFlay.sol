@@ -3,23 +3,23 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {Currency, CurrencyLibrary} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {LiquidityAmounts} from '@uniswap/v4-core/test/utils/LiquidityAmounts.sol';
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
 import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency, CurrencyLibrary} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {LiquidityAmounts} from '@uniswap/v4-core/test/utils/LiquidityAmounts.sol';
 
+import {PositionManager} from '@flaunch/PositionManager.sol';
 import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
 import {BaseSubscriber} from '@flaunch/subscribers/Base.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TickFinder} from '@flaunch/types/TickFinder.sol';
 
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
-
 
 /**
  * Collects ETH and flETH from external contracts and when a certain threshold is reached
@@ -27,7 +27,6 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
  * burning it.
  */
 contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
-
     using CurrencyLibrary for Currency;
     using CurrencySettler for Currency;
     using PoolIdLibrary for PoolKey;
@@ -81,7 +80,7 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
      * Sets our {Notifier} to parent contract to lock down calls and references our FLETH
      * contract address.
      */
-    constructor (address _fleth, address _poolManager, address _notifier) BaseSubscriber(_notifier) {
+    constructor(address _fleth, address _poolManager, address _notifier) BaseSubscriber(_notifier) {
         fleth = IFLETH(_fleth);
         poolManager = IPoolManager(_poolManager);
 
@@ -99,7 +98,9 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
      *
      * @dev This must return `true` to be subscribed.
      */
-    function subscribe(bytes memory /* _data */) public view override onlyNotifier returns (bool) {
+    function subscribe(
+        bytes memory /* _data */
+    ) public view override onlyNotifier returns (bool) {
         return true;
     }
 
@@ -111,7 +112,7 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
      *
      * @param _key The notification key
      */
-    function notify(PoolId /* _poolId */, bytes4 _key, bytes calldata /* _data */) public override onlyNotifier {
+    function notify(PoolId, /* _poolId */ bytes4 _key, bytes calldata /* _data */ ) public override onlyNotifier {
         // We only want to deal with the `afterSwap` key
         if (_key != IHooks.afterSwap.selector) {
             return;
@@ -236,7 +237,9 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
      *
      * @param _ethThreshold The new ETH threshold
      */
-    function setEthThreshold(uint _ethThreshold) public onlyOwner {
+    function setEthThreshold(
+        uint _ethThreshold
+    ) public onlyOwner {
         ethThreshold = _ethThreshold;
         emit ThresholdUpdated(_ethThreshold);
     }
@@ -248,7 +251,9 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
      *
      * @param _poolKey The new ETH threshold
      */
-    function setPoolKey(PoolKey memory _poolKey) public onlyOwner {
+    function setPoolKey(
+        PoolKey memory _poolKey
+    ) public onlyOwner {
         flayPoolKey = _poolKey;
         emit PoolKeyUpdated(_poolKey);
     }
@@ -262,11 +267,7 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
      * @param _tickUpper The upper tick of our BidWall position
      * @param _liquidityDelta The liquidity delta modifying the position
      */
-    function _modifyAndSettleLiquidity(
-        int24 _tickLower,
-        int24 _tickUpper,
-        int128 _liquidityDelta
-    ) internal {
+    function _modifyAndSettleLiquidity(int24 _tickLower, int24 _tickUpper, int128 _liquidityDelta) internal {
         (BalanceDelta delta_,) = poolManager.modifyLiquidity({
             key: flayPoolKey,
             params: IPoolManager.ModifyLiquidityParams({
@@ -294,7 +295,9 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
     /**
      * Checks the flETH balance held by the contract and emits an event if it has changed.
      */
-    function _emitEthBalance(uint _ethBalance) internal {
+    function _emitEthBalance(
+        uint _ethBalance
+    ) internal {
         if (_ethBalance == _storedEthBalance) {
             return;
         }
@@ -307,9 +310,8 @@ contract BuyBackAndBurnFlay is BaseSubscriber, Ownable {
     /**
      * The contract should be able to receive ETH from any source.
      */
-    receive () external payable {
+    receive() external payable {
         // Convert any ETH that we receive into FLETH
         fleth.deposit{value: msg.value}(0);
     }
-
 }

@@ -3,14 +3,13 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {IERC721} from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
 import {MarketCappedPrice} from '@flaunch/price/MarketCappedPrice.sol';
 
 import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
-
 
 /**
  * This contract allows users to import their memecoin to the AnyPositionManager. When importing
@@ -18,7 +17,6 @@ import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
  * to be imported.
  */
 contract TokenImporter is Ownable {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error InvalidMemecoin();
@@ -33,7 +31,7 @@ contract TokenImporter is Ownable {
 
     /// The AnyPositionManager contract
     AnyPositionManager public anyPositionManager;
-    
+
     /// Set of verifier addresses
     EnumerableSet.AddressSet private _verifiers;
 
@@ -42,7 +40,9 @@ contract TokenImporter is Ownable {
      *
      * @param _anyPositionManager The address of the AnyPositionManager contract
      */
-    constructor (address payable _anyPositionManager) {
+    constructor(
+        address payable _anyPositionManager
+    ) {
         _initializeOwner(msg.sender);
 
         // Validate and set the AnyPositionManager contract
@@ -79,7 +79,12 @@ contract TokenImporter is Ownable {
      * @param _initialMarketCap The initial market cap of the memecoin in USDC
      * @param _verifier The address of the verifier
      */
-    function initialize(address _memecoin, uint24 _creatorFeeAllocation, uint _initialMarketCap, address _verifier) public {
+    function initialize(
+        address _memecoin,
+        uint24 _creatorFeeAllocation,
+        uint _initialMarketCap,
+        address _verifier
+    ) public {
         // Ensure that the memecoin is not a zero address
         if (_memecoin == address(0)) {
             revert ZeroAddress();
@@ -106,7 +111,12 @@ contract TokenImporter is Ownable {
      * @param _initialMarketCap The initial market cap of the memecoin in USDC
      * @param _verifier The address of the verifier
      */
-    function _initialize(address _memecoin, uint24 _creatorFeeAllocation, uint _initialMarketCap, address _verifier) internal {
+    function _initialize(
+        address _memecoin,
+        uint24 _creatorFeeAllocation,
+        uint _initialMarketCap,
+        address _verifier
+    ) internal {
         // Flaunch our token into the AnyPositionManager
         anyPositionManager.flaunch(
             AnyPositionManager.FlaunchParams({
@@ -126,12 +136,18 @@ contract TokenImporter is Ownable {
      *
      * @param _verifier The address of the verifier
      */
-    function addVerifier(address _verifier) public onlyOwner {
+    function addVerifier(
+        address _verifier
+    ) public onlyOwner {
         // Ensure that the verifier is not the zero address
-        if (_verifier == address(0)) revert ZeroAddress();
+        if (_verifier == address(0)) {
+            revert ZeroAddress();
+        }
 
         // Add the verifier - will revert if already added
-        if (!_verifiers.add(_verifier)) revert VerifierAlreadyAdded();
+        if (!_verifiers.add(_verifier)) {
+            revert VerifierAlreadyAdded();
+        }
         emit VerifierAdded(_verifier);
     }
 
@@ -140,14 +156,18 @@ contract TokenImporter is Ownable {
      *
      * @param _verifier The address of the verifier
      */
-    function removeVerifier(address _verifier) public onlyOwner {
-        if (!_verifiers.remove(_verifier)) revert VerifierNotAdded();
+    function removeVerifier(
+        address _verifier
+    ) public onlyOwner {
+        if (!_verifiers.remove(_verifier)) {
+            revert VerifierNotAdded();
+        }
         emit VerifierRemoved(_verifier);
     }
 
     /**
      * Get all verifiers that are used to verify memecoins.
-     * 
+     *
      * @return verifiers_ Array of all registered verifier addresses
      */
     function getAllVerifiers() public view returns (address[] memory verifiers_) {
@@ -163,7 +183,9 @@ contract TokenImporter is Ownable {
      *
      * @return verifier_ The address of the verifier that validated the memecoin
      */
-    function verifyMemecoin(address _memecoin) public view returns (address verifier_) {
+    function verifyMemecoin(
+        address _memecoin
+    ) public view returns (address verifier_) {
         uint length = _verifiers.length();
         for (uint i = 0; i < length; i++) {
             if (IImportVerifier(_verifiers.at(i)).isValid(_memecoin, msg.sender)) {
@@ -177,13 +199,16 @@ contract TokenImporter is Ownable {
      *
      * @param _anyPositionManager The address of the AnyPositionManager contract
      */
-    function setAnyPositionManager(address payable _anyPositionManager) public onlyOwner {
+    function setAnyPositionManager(
+        address payable _anyPositionManager
+    ) public onlyOwner {
         // Ensure that our required contracts are not the zero address
-        if (_anyPositionManager == address(0)) revert ZeroAddress();
+        if (_anyPositionManager == address(0)) {
+            revert ZeroAddress();
+        }
 
         // Set the AnyPositionManager contract
         anyPositionManager = AnyPositionManager(_anyPositionManager);
         emit AnyPositionManagerSet(_anyPositionManager);
     }
-
 }

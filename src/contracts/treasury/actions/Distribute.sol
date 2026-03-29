@@ -11,12 +11,10 @@ import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
 
-
 /**
  * Allows token0 and token1 to be distributed to token holders.
  */
 contract DistributeAction is ITreasuryAction {
-
     using SafeCastLib for uint;
 
     /**
@@ -41,7 +39,9 @@ contract DistributeAction is ITreasuryAction {
      *
      * @param _nativeToken The ERC20 native token
      */
-    constructor (address _nativeToken) {
+    constructor(
+        address _nativeToken
+    ) {
         nativeToken = Currency.wrap(_nativeToken);
     }
 
@@ -113,6 +113,5 @@ contract DistributeAction is ITreasuryAction {
     /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
      */
-    receive () external payable {}
-
+    receive() external payable {}
 }

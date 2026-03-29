@@ -6,24 +6,23 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {FlaunchZap} from '@flaunch/zaps/FlaunchZap.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
-import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
-import {TreasuryManagerMock} from 'test/mocks/TreasuryManagerMock.sol';
-import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
-import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
-import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
-import {ClosedPermissions} from '@flaunch/treasury/permissions/Closed.sol';
-import {WhitelistedPermissions} from '@flaunch/treasury/permissions/Whitelisted.sol';
+import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
+import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
+import {FlaunchZap} from '@flaunch/zaps/FlaunchZap.sol';
+import {TreasuryManagerMock} from 'test/mocks/TreasuryManagerMock.sol';
+
 import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
+import {ClosedPermissions} from '@flaunch/treasury/permissions/Closed.sol';
+import {WhitelistedPermissions} from '@flaunch/treasury/permissions/Whitelisted.sol';
 
 import {FlaunchTest} from 'test/FlaunchTest.sol';
 
-
 contract FlaunchZapTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     IManagerPermissions public closedPermissions;
@@ -48,7 +47,7 @@ contract FlaunchZapTest is FlaunchTest {
         address deployedManager;
     }
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -115,7 +114,9 @@ contract FlaunchZapTest is FlaunchTest {
         _validateRefundedETH(result.ethSpent);
     }
 
-    function _validateFuzzParams(FuzzParams memory params) internal view {
+    function _validateFuzzParams(
+        FuzzParams memory params
+    ) internal view {
         // Ensure that the creator is not a zero address, as this will revert
         vm.assume(params.creator != address(0));
 
@@ -136,7 +137,9 @@ contract FlaunchZapTest is FlaunchTest {
         flETH.approve(address(flaunchZap), 1000e27);
     }
 
-    function _executeFlaunch(FuzzParams memory params) internal returns (FlaunchResult memory) {
+    function _executeFlaunch(
+        FuzzParams memory params
+    ) internal returns (FlaunchResult memory) {
         // Flaunch time baby!
         (address memecoin_, uint ethSpent_, address deployedManager_) = flaunchZap.flaunch{value: 1000e27}({
             _flaunchParams: PositionManager.FlaunchParams({
@@ -174,18 +177,13 @@ contract FlaunchZapTest is FlaunchTest {
             })
         });
 
-        return FlaunchResult({
-            memecoin: memecoin_,
-            ethSpent: ethSpent_,
-            deployedManager: deployedManager_
-        });
+        return FlaunchResult({memecoin: memecoin_, ethSpent: ethSpent_, deployedManager: deployedManager_});
     }
 
     function _validateWhitelist(address memecoin, FuzzParams memory params) internal view {
         // Check our whitelist
-        (bytes32 root, string memory ipfs, uint maxTokens, bool active, bool exists) = whitelistFairLaunch.whitelistMerkles(
-            positionManager.poolKey(memecoin).toId()
-        );
+        (bytes32 root, string memory ipfs, uint maxTokens, bool active, bool exists) =
+            whitelistFairLaunch.whitelistMerkles(positionManager.poolKey(memecoin).toId());
 
         if (params.whitelistMerkleRoot != '' && params.initialTokenFairLaunch != 0) {
             assertEq(root, params.whitelistMerkleRoot);
@@ -226,7 +224,10 @@ contract FlaunchZapTest is FlaunchTest {
             // if the manager was an approved implementation
             if (treasuryManagerFactory.approvedManagerImplementation(params.manager)) {
                 // The permissions should be set on the manager
-                assertEq(address(ITreasuryManager(deployedManager).permissions()), params.isClosedPermissions ? address(closedPermissions) : address(whitelistedPermissions));
+                assertEq(
+                    address(ITreasuryManager(deployedManager).permissions()),
+                    params.isClosedPermissions ? address(closedPermissions) : address(whitelistedPermissions)
+                );
 
                 // The manager owner should be the creator
                 assertEq(ITreasuryManager(deployedManager).managerOwner(), params.creator);
@@ -240,7 +241,9 @@ contract FlaunchZapTest is FlaunchTest {
         }
     }
 
-    function _validateRefundedETH(uint ethSpent) internal view {
+    function _validateRefundedETH(
+        uint ethSpent
+    ) internal view {
         // Check our refunded ETH
         assertEq(payable(address(this)).balance, 1000e27 - ethSpent);
     }
@@ -272,7 +275,7 @@ contract FlaunchZapTest is FlaunchTest {
         flETH.approve(address(flaunchZap), 1000e27);
 
         // Flaunch time baby!
-        (address memecoin_, uint ethSpent_, ) = flaunchZap.flaunch{value: 1000e27}({
+        (address memecoin_, uint ethSpent_,) = flaunchZap.flaunch{value: 1000e27}({
             _flaunchParams: PositionManager.FlaunchParams({
                 name: 'FlaunchZap',
                 symbol: 'ZAP',
@@ -298,7 +301,7 @@ contract FlaunchZapTest is FlaunchTest {
 
         // Check the Fair Launch status
         PoolId poolId = positionManager.poolKey(memecoin_).toId();
-        
+
         // We should only still be in FairLaunch if the premine did not fill the initial fair launch supply
         assertEq(fairLaunch.inFairLaunchWindow(poolId), _premineAmount < _initialTokenFairLaunch);
 
@@ -340,8 +343,9 @@ contract FlaunchZapTest is FlaunchTest {
     function test_deployAndInitializeManagerWithPermissions() public {
         address permissionsContract = address(0x789);
         // Deploy a mocked manager implementation
-        address managerImplementation = address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
-        
+        address managerImplementation =
+            address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+
         treasuryManagerFactory.approveManager(managerImplementation);
 
         // We know the address in advance for this test, so we can assert the expected value
@@ -350,20 +354,17 @@ contract FlaunchZapTest is FlaunchTest {
 
         // Deploy and initialize the manager with permissions
         address payable _manager = flaunchZap.deployAndInitializeManager(
-            managerImplementation,
-            address(this),
-            abi.encode('Test initialization'),
-            permissionsContract
+            managerImplementation, address(this), abi.encode('Test initialization'), permissionsContract
         );
 
         // Verify the manager was deployed correctly
         assertEq(treasuryManagerFactory.managerImplementation(_manager), managerImplementation);
-        
+
         // Verify the manager was initialized correctly
         TreasuryManagerMock manager = TreasuryManagerMock(_manager);
         assertTrue(manager.initialized());
         assertEq(manager.managerOwner(), address(this));
-        
+
         // Verify permissions were set correctly
         assertEq(address(manager.permissions()), permissionsContract);
     }
@@ -385,21 +386,19 @@ contract FlaunchZapTest is FlaunchTest {
         positionManager.setFairLaunchFeeCalculator(feeCalculator);
 
         // for feeCalculatorParams
-        TrustedSignerFeeCalculator.FairLaunchSettings memory settings = TrustedSignerFeeCalculator.FairLaunchSettings({
-            enabled: true,
-            walletCap: 10 ether,
-            txCap: 5 ether
-        });
+        TrustedSignerFeeCalculator.FairLaunchSettings memory settings =
+            TrustedSignerFeeCalculator.FairLaunchSettings({enabled: true, walletCap: 10 ether, txCap: 5 ether});
 
         // for treasuryManagerParams
         address managerImplementation;
         if (_depositIntoManager) {
             // Deploy a mocked manager implementation
-            managerImplementation = address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+            managerImplementation =
+                address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
             treasuryManagerFactory.approveManager(managerImplementation);
         }
 
-        (address memecoin_, , address deployedManager_) = flaunchZap.flaunch{value: 1000e27}({
+        (address memecoin_,, address deployedManager_) = flaunchZap.flaunch{value: 1000e27}({
             _flaunchParams: PositionManager.FlaunchParams({
                 name: 'FlaunchZap',
                 symbol: 'ZAP',
@@ -415,11 +414,7 @@ contract FlaunchZapTest is FlaunchTest {
             }),
             _trustedFeeSigner: _trustedFeeSigner,
             _premineSwapHookData: bytes(''),
-            _whitelistParams: FlaunchZap.WhitelistParams({
-                merkleRoot: bytes32(''),
-                merkleIPFSHash: '',
-                maxTokens: 0
-            }),
+            _whitelistParams: FlaunchZap.WhitelistParams({merkleRoot: bytes32(''), merkleIPFSHash: '', maxTokens: 0}),
             _airdropParams: FlaunchZap.AirdropParams({
                 airdropIndex: 0,
                 airdropAmount: 0,

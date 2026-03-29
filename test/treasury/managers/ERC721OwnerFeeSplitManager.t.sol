@@ -5,18 +5,17 @@ import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
-import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
+
 import {ERC721OwnerFeeSplitManager} from '@flaunch/treasury/managers/ERC721OwnerFeeSplitManager.sol';
+import {FeeSplitManager} from '@flaunch/treasury/managers/FeeSplitManager.sol';
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
 
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 
-import {ERC721Mock} from 'test/mocks/ERC721Mock.sol';
 import {FlaunchTest} from 'test/FlaunchTest.sol';
-
+import {ERC721Mock} from 'test/mocks/ERC721Mock.sol';
 
 contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
-
     // The treasury manager
     ERC721OwnerFeeSplitManager feeSplitManager;
     address managerImplementation;
@@ -36,16 +35,16 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         erc2 = new ERC721Mock('ERC2', '2');
         erc3 = new ERC721Mock('ERC3', '3');
 
-        managerImplementation = address(
-            new ERC721OwnerFeeSplitManager(address(treasuryManagerFactory), address(feeEscrowRegistry))
-        );
+        managerImplementation =
+            address(new ERC721OwnerFeeSplitManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
 
         treasuryManagerFactory.approveManager(managerImplementation);
     }
 
     function test_CanInitializeSuccessfully() public {
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](3);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](3);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 20_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 10);
         recipientShares[2] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc3), 30_00000, 20);
@@ -74,11 +73,14 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         assertEq(totalSupply, 0);
     }
 
-    function test_CannotInitializeWithInvalidCreatorShare(uint _invalidShare) public {
+    function test_CannotInitializeWithInvalidCreatorShare(
+        uint _invalidShare
+    ) public {
         vm.assume(_invalidShare > MAX_SHARE);
 
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](2);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](2);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 50_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 20);
 
@@ -87,11 +89,14 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         _deployWithRecipients(recipientShares, _invalidShare, 0);
     }
 
-    function test_CannotInitializeWithInvalidOwnerShare(uint _invalidShare) public {
+    function test_CannotInitializeWithInvalidOwnerShare(
+        uint _invalidShare
+    ) public {
         vm.assume(_invalidShare > MAX_SHARE);
 
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](2);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](2);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 50_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 20);
 
@@ -109,7 +114,8 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         vm.assume(_creatorShare + _ownerShare > MAX_SHARE);
 
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](2);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](2);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 50_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 20);
 
@@ -120,16 +126,16 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
 
     function test_CannotInitializeWithInvalidShareTotal() public {
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](3);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](3);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 20_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 40_00000, 10);
         recipientShares[2] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc3), 30_00000, 20);
 
         // Set up our {TreasuryManagerFactory} and approve our implementation
-        vm.expectRevert(abi.encodeWithSelector(
-            FeeSplitManager.InvalidRecipientShareTotal.selector,
-            90_00000, 100_00000
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(FeeSplitManager.InvalidRecipientShareTotal.selector, 90_00000, 100_00000)
+        );
 
         // Initialize our token
         _deployWithRecipients(recipientShares, 20_00000, 0);
@@ -137,7 +143,8 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
 
     function test_CannotInitializeWithZeroAddressRecipient() public {
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](3);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](3);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 20_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 10);
         recipientShares[2] = ERC721OwnerFeeSplitManager.ERC721Share(address(0), 30_00000, 20);
@@ -151,7 +158,8 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
 
     function test_CannotInitializeWithZeroShareRecipient() public {
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](3);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](3);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 20_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 10);
         recipientShares[2] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc3), 0, 20);
@@ -165,7 +173,8 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
 
     function test_CannotInitializeWithZeroTotalSupplyRecipient() public {
         // Set up our revenue split
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](3);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](3);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 20_00000, 0);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 10);
         recipientShares[2] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc3), 30_00000, 20);
@@ -178,7 +187,8 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
     }
 
     function test_CanInitializeWithMultipleRecipients() public {
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](3);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](3);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 20_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 10);
         recipientShares[2] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc3), 30_00000, 20);
@@ -222,11 +232,7 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         // Reset our ETH balance to ensure that it doesn't conflict with tests
         deal(address(this), 0);
 
-        feeSplitManager.claim(
-            abi.encode(
-                ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)
-            )
-        );
+        feeSplitManager.claim(abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)));
 
         // Our manager should hold 10 ether, minus the creator fees, owner fees and tokens
         // that we have claimed against.
@@ -260,11 +266,7 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         claimTokenIds[0][0] = 0; // Already claimed
         claimTokenIds[0][1] = 1; // Not yet claimed
 
-        feeSplitManager.claim(
-            abi.encode(
-                ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)
-            )
-        );
+        feeSplitManager.claim(abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)));
 
         assertEq(payable(address(feeSplitManager)).balance, 7.915 ether);
         assertEq(payable(address(this)).balance, 2.085 ether);
@@ -293,11 +295,7 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         // Reset our balance to the original balance
         deal(address(this), balanceBefore);
 
-        feeSplitManager.claim(
-            abi.encode(
-                ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)
-            )
-        );
+        feeSplitManager.claim(abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)));
 
         assertEq(payable(address(feeSplitManager)).balance, 16.175 ether);
         assertEq(payable(address(this)).balance, 3.825 ether);
@@ -316,7 +314,8 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
     }
 
     function test_CannotClaimMultipleTimesAgainstTheSameToken() public {
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](1);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](1);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 100_00000, 10);
 
         // Set up our {TreasuryManagerFactory} and approve our implementation
@@ -343,11 +342,7 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
 
         // We can execute a claim that, even though requesting 10% twice from tokenId 1, it will only claim
         // 10% once as we negate the duplicate tokenId claim.
-        feeSplitManager.claim(
-            abi.encode(
-                ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)
-            )
-        );
+        feeSplitManager.claim(abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)));
 
         // Our claim should have claimed 10% of the ETH, as we only have 10% of the shares. The actual
         // claimed amount is 0.7 eth as 10% goes to owner and 20% to creators. The creator fees are held
@@ -369,11 +364,7 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         claimTokenIds[1] = new uint[](1);
         claimTokenIds[1][0] = 2;
 
-        feeSplitManager.claim(
-            abi.encode(
-                ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)
-            )
-        );
+        feeSplitManager.claim(abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(claimErc721, claimTokenIds)));
 
         // Our claim should have claimed a total of 20% of the ETH, as we only have 10% of the shares from
         // the first claim, and 10% from the second claim. The actual claimed amount is 0.7 eth as 10% goes
@@ -383,7 +374,9 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         assertEq(payable(address(this)).balance, 2.4 ether);
     }
 
-    function test_ValidateClaimParamsHandlesInvalidCases(address _invalidCaller) public {
+    function test_ValidateClaimParamsHandlesInvalidCases(
+        address _invalidCaller
+    ) public {
         // Ensure that the caller is not the zero address
         vm.assume(_invalidCaller != address(0));
 
@@ -391,7 +384,8 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         vm.assume(_invalidCaller != address(this));
 
         // Setup the manager with valid share configuration
-        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares = new ERC721OwnerFeeSplitManager.ERC721Share[](3);
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory recipientShares =
+            new ERC721OwnerFeeSplitManager.ERC721Share[](3);
         recipientShares[0] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc1), 20_00000, 10);
         recipientShares[1] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc2), 50_00000, 10);
         recipientShares[2] = ERC721OwnerFeeSplitManager.ERC721Share(address(erc3), 30_00000, 20);
@@ -411,9 +405,7 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         tokenIds[0] = new uint[](1);
         tokenIds[0][0] = 1;
 
-        bytes memory params = abi.encode(
-            ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds)
-        );
+        bytes memory params = abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds));
 
         vm.expectRevert(ERC721OwnerFeeSplitManager.InvalidClaimParams.selector);
         feeSplitManager.isValidRecipient(_invalidCaller, params);
@@ -428,13 +420,12 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         tokenIds[0][0] = 1;
         tokenIds[0][1] = 1; // Duplicate tokenId
 
-        params = abi.encode(
-            ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds)
-        );
+        params = abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds));
 
         feeSplitManager.isValidRecipient(_invalidCaller, params);
 
-        // Test case 3: Duplicate erc721 with the same tokenId in the ClaimParams will pass, but won't be claimed against
+        // Test case 3: Duplicate erc721 with the same tokenId in the ClaimParams will pass, but won't be claimed
+        // against
         // multiple times.
         erc721s = new address[](2);
         erc721s[0] = address(erc1);
@@ -446,9 +437,7 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         tokenIds[1] = new uint[](1);
         tokenIds[1][0] = 1; // Same tokenId as before
 
-        params = abi.encode(
-            ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds)
-        );
+        params = abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds));
 
         feeSplitManager.isValidRecipient(_invalidCaller, params);
 
@@ -463,16 +452,14 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         tokenIds[1] = new uint[](1);
         tokenIds[1][0] = 2; // Different tokenId
 
-        params = abi.encode(
-            ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds)
-        );
+        params = abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds));
 
         // This should pass validation but fail because we don't own the NFTs
         assertFalse(feeSplitManager.isValidRecipient(address(0x123), params));
 
         // Let's verify more thoroughly that it passed validation by checking with a real owner
         bool result = feeSplitManager.isValidRecipient(_invalidCaller, params);
-        
+
         // Should be true since the validation passed and we're the owner of both tokens
         assertTrue(result);
 
@@ -480,15 +467,15 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         erc721s = new address[](0);
         tokenIds = new uint[][](0);
 
-        params = abi.encode(
-            ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds)
-        );
+        params = abi.encode(ERC721OwnerFeeSplitManager.ClaimParams(erc721s, tokenIds));
 
         vm.expectRevert(ERC721OwnerFeeSplitManager.InvalidClaimParams.selector);
         feeSplitManager.isValidRecipient(_invalidCaller, params);
     }
 
-    function _createERC721(address _recipient) internal returns (uint tokenId_) {
+    function _createERC721(
+        address _recipient
+    ) internal returns (uint tokenId_) {
         // Flaunch another memecoin to mint a tokenId
         address memecoin = positionManager.flaunch(
             PositionManager.FlaunchParams({
@@ -510,27 +497,31 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         return flaunch.tokenId(memecoin);
     }
 
-    function _deployWithRecipients(ERC721OwnerFeeSplitManager.ERC721Share[] memory _recipientShares, uint _creatorShare, uint _ownerShare) internal {
+    function _deployWithRecipients(
+        ERC721OwnerFeeSplitManager.ERC721Share[] memory _recipientShares,
+        uint _creatorShare,
+        uint _ownerShare
+    ) internal {
         // Initialize our token
         address payable manager = treasuryManagerFactory.deployAndInitializeManager({
             _managerImplementation: managerImplementation,
             _owner: address(this),
-            _data: abi.encode(
-                ERC721OwnerFeeSplitManager.InitializeParams(_creatorShare, _ownerShare, _recipientShares)
-            )
+            _data: abi.encode(ERC721OwnerFeeSplitManager.InitializeParams(_creatorShare, _ownerShare, _recipientShares))
         });
 
         feeSplitManager = ERC721OwnerFeeSplitManager(manager);
     }
 
-    function _allocateFees(uint _amount) internal {
+    function _allocateFees(
+        uint _amount
+    ) internal {
         // Mint ETH to the flETH contract to facilitate unwrapping
         deal(address(this), _amount);
         WETH.deposit{value: _amount}();
         WETH.transfer(address(positionManager), _amount);
 
         positionManager.allocateFeesMock({
-            _poolId: PoolId.wrap(bytes32('1')),  // Can be mocked to anything
+            _poolId: PoolId.wrap(bytes32('1')), // Can be mocked to anything
             _recipient: payable(address(feeSplitManager)),
             _amount: _amount
         });
@@ -543,16 +534,9 @@ contract ERC721OwnerFeeSplitManagerTest is FlaunchTest {
         WETH.approve(address(feeEscrow), _amount);
 
         // Discover the PoolId from the tokenId
-        PoolId poolId = feeSplitManager.tokenPoolId(
-            feeSplitManager.flaunchTokenInternalIds(address(flaunch), _tokenId)
-        );
+        PoolId poolId = feeSplitManager.tokenPoolId(feeSplitManager.flaunchTokenInternalIds(address(flaunch), _tokenId));
 
         // Allocate our fees directly to the FeeEscrow
-        feeEscrow.allocateFees({
-            _poolId: poolId,
-            _recipient: payable(address(feeSplitManager)),
-            _amount: _amount
-        });
+        feeEscrow.allocateFees({_poolId: poolId, _recipient: payable(address(feeSplitManager)), _amount: _amount});
     }
-
 }

@@ -6,7 +6,6 @@ import {println} from 'vulcan/test.sol';
 
 import {FixedPointMathLib} from '@solady/utils/FixedPointMathLib.sol';
 
-
 contract DynamicFeeV2ModellingInternal is Test {
     int internal constant VOLUME_DECAY_RATE = -277777777777777777; // -1/3600 scaled to 1e18
     int internal constant FEE_GROWTH_RATE = 277777777777777777; // 1/3600 scaled to 1e18
@@ -35,78 +34,42 @@ contract DynamicFeeV2ModellingInternal is Test {
         _accumulatedVolume(50 * ONE_PERCENT_SUPPLY, 0);
         _accumulatedVolume(100 * ONE_PERCENT_SUPPLY, 0);
 
-        _accumulatedVolume(
-            INCREASE_TOKEN_VOLUME_THRESHOLD,
-            ROLLING_FEE_WINDOW_DURATION - 1
-        );
-        _accumulatedVolume(
-            50 * ONE_PERCENT_SUPPLY,
-            ROLLING_FEE_WINDOW_DURATION - 1
-        );
-        _accumulatedVolume(
-            100 * ONE_PERCENT_SUPPLY,
-            ROLLING_FEE_WINDOW_DURATION - 1
-        );
+        _accumulatedVolume(INCREASE_TOKEN_VOLUME_THRESHOLD, ROLLING_FEE_WINDOW_DURATION - 1);
+        _accumulatedVolume(50 * ONE_PERCENT_SUPPLY, ROLLING_FEE_WINDOW_DURATION - 1);
+        _accumulatedVolume(100 * ONE_PERCENT_SUPPLY, ROLLING_FEE_WINDOW_DURATION - 1);
     }
 
     // ExpOverflow()
-    function _feeIncrease(uint volumeAboveThreshold) internal view {
-        uint growthFactor = uint(
-            FixedPointMathLib.expWad(
-                int(volumeAboveThreshold) * FEE_GROWTH_RATE
-            )
-        );
-        uint feeIncreasedScaled = FixedPointMathLib.mulDivUp(
-            MAXIMUM_FEE_SCALED - MINIMUM_FEE_SCALED,
-            growthFactor,
-            1 ether
-        );
+    function _feeIncrease(
+        uint volumeAboveThreshold
+    ) internal view {
+        uint growthFactor = uint(FixedPointMathLib.expWad(int(volumeAboveThreshold) * FEE_GROWTH_RATE));
+        uint feeIncreasedScaled =
+            FixedPointMathLib.mulDivUp(MAXIMUM_FEE_SCALED - MINIMUM_FEE_SCALED, growthFactor, 1 ether);
 
         uint newFeeScaled = MINIMUM_FEE_SCALED + feeIncreasedScaled;
 
-        println(
-            'volumeAboveThreshold: {u:d18} newFeeScaled: {u:d4}',
-            abi.encode(volumeAboveThreshold, newFeeScaled)
-        );
+        println('volumeAboveThreshold: {u:d18} newFeeScaled: {u:d4}', abi.encode(volumeAboveThreshold, newFeeScaled));
     }
 
     // ExpOverflow()
-    function _feeDecrease(
-        uint timeRemaining,
-        uint currentFeeScaled
-    ) internal view {
+    function _feeDecrease(uint timeRemaining, uint currentFeeScaled) internal view {
         // as timeRemaining decreases, the decayFactor decreases
-        uint growthFactor = uint(
-            FixedPointMathLib.expWad(int(timeRemaining) * FEE_GROWTH_RATE)
-        );
-        uint feeDecreaseScaled = FixedPointMathLib.mulDivUp(
-            currentFeeScaled - MINIMUM_FEE_SCALED,
-            growthFactor,
-            1 ether
-        );
+        uint growthFactor = uint(FixedPointMathLib.expWad(int(timeRemaining) * FEE_GROWTH_RATE));
+        uint feeDecreaseScaled =
+            FixedPointMathLib.mulDivUp(currentFeeScaled - MINIMUM_FEE_SCALED, growthFactor, 1 ether);
 
         uint swapFeeScaled = currentFeeScaled - feeDecreaseScaled;
 
-        println(
-            'timeRemaining: {u} swapFeeScaled: {u:d4}',
-            abi.encode(timeRemaining, swapFeeScaled)
-        );
+        println('timeRemaining: {u} swapFeeScaled: {u:d4}', abi.encode(timeRemaining, swapFeeScaled));
     }
 
-    function _accumulatedVolume(
-        uint accumulatorWeightedVolume,
-        uint timeElapsed
-    ) internal view {
-        uint decayFactor = uint(
-            FixedPointMathLib.expWad(int(timeElapsed) * VOLUME_DECAY_RATE)
-        );
-        accumulatorWeightedVolume =
-            (accumulatorWeightedVolume * decayFactor) /
-            1 ether;
+    function _accumulatedVolume(uint accumulatorWeightedVolume, uint timeElapsed) internal view {
+        uint decayFactor = uint(FixedPointMathLib.expWad(int(timeElapsed) * VOLUME_DECAY_RATE));
+        accumulatorWeightedVolume = (accumulatorWeightedVolume * decayFactor) / 1 ether;
 
         println(
-            'timeElapsed: {u} accumulatorWeightedVolume: {u:d18}',
-            abi.encode(timeElapsed, accumulatorWeightedVolume)
+            'timeElapsed: {u} accumulatorWeightedVolume: {u:d18}', abi.encode(timeElapsed, accumulatorWeightedVolume)
         );
     }
 }

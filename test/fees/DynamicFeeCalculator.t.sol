@@ -12,9 +12,7 @@ import {DynamicFeeCalculator} from '@flaunch/fees/DynamicFeeCalculator.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract DynamicFeeCalculatorTest is FlaunchTest {
-
     address internal constant POSITION_MANAGER = address(10);
 
     DynamicFeeCalculator feeCalculator;
@@ -77,7 +75,9 @@ contract DynamicFeeCalculatorTest is FlaunchTest {
         _trackSwap(3e27);
     }
 
-    function test_CannotTrackSwapFromUnknownCaller(address _caller) public {
+    function test_CannotTrackSwapFromUnknownCaller(
+        address _caller
+    ) public {
         vm.assume(_caller != POSITION_MANAGER);
 
         vm.startPrank(_caller);
@@ -144,7 +144,9 @@ contract DynamicFeeCalculatorTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function _trackSwap(int128 _amountSpecified) internal {
+    function _trackSwap(
+        int128 _amountSpecified
+    ) internal {
         feeCalculator.trackSwap(
             address(1),
             _poolKey,
@@ -157,5 +159,4 @@ contract DynamicFeeCalculatorTest is FlaunchTest {
             ''
         );
     }
-
 }

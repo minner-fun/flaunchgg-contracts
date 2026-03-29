@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {BlankAction} from '@flaunch/treasury/actions/Blank.sol';
-import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
-import {TreasuryActionManager} from '@flaunch/treasury/ActionManager.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {TreasuryActionManager} from '@flaunch/treasury/ActionManager.sol';
+import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
+import {BlankAction} from '@flaunch/treasury/actions/Blank.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract MemecoinTreasuryTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     BlankAction internal blankAction;
@@ -21,7 +19,7 @@ contract MemecoinTreasuryTest is FlaunchTest {
 
     address internal token;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -48,7 +46,9 @@ contract MemecoinTreasuryTest is FlaunchTest {
         memecoinTreasury = MemecoinTreasury(flaunch.memecoinTreasury(1));
     }
 
-    function test_CanExecuteAction(bytes memory _data) public {
+    function test_CanExecuteAction(
+        bytes memory _data
+    ) public {
         // Approve the action
         actionManager.approveAction(address(blankAction));
 
@@ -60,7 +60,9 @@ contract MemecoinTreasuryTest is FlaunchTest {
         memecoinTreasury.executeAction(address(blankAction), _data);
     }
 
-    function test_CannotExecuteUnapprovedAction(bytes memory _data) public {
+    function test_CannotExecuteUnapprovedAction(
+        bytes memory _data
+    ) public {
         // Execute the action
         vm.expectRevert(MemecoinTreasury.ActionNotApproved.selector);
         memecoinTreasury.executeAction(address(blankAction), _data);
@@ -89,14 +91,12 @@ contract MemecoinTreasuryTest is FlaunchTest {
         memecoinTreasury.claimFees();
 
         // Check that ETH balance has not changed
-        assertEq(
-            WETH.balanceOf(address(memecoinTreasury)),
-            initialBalance,
-            'ETH should not have been added'
-        );
+        assertEq(WETH.balanceOf(address(memecoinTreasury)), initialBalance, 'ETH should not have been added');
     }
 
-    function test_CanClaimFees_FlethAdded(uint _flethAdded) public {
+    function test_CanClaimFees_FlethAdded(
+        uint _flethAdded
+    ) public {
         // Provide sufficient flETH to fund it
         deal(address(WETH), address(positionManager), _flethAdded);
 
@@ -116,13 +116,13 @@ contract MemecoinTreasuryTest is FlaunchTest {
 
         // Check that ETH balance increased by the expected amount
         assertEq(
-            WETH.balanceOf(address(memecoinTreasury)),
-            initialBalance + _flethAdded,
-            'flETH should have been added'
+            WETH.balanceOf(address(memecoinTreasury)), initialBalance + _flethAdded, 'flETH should have been added'
         );
     }
 
-    function test_CanClaimFeesDuringTransaction(uint _flethAdded) public {
+    function test_CanClaimFeesDuringTransaction(
+        uint _flethAdded
+    ) public {
         // Provide sufficient native token to the {PositionManager}
         deal(address(WETH), address(positionManager), _flethAdded);
 
@@ -143,10 +143,7 @@ contract MemecoinTreasuryTest is FlaunchTest {
 
         // Check that ETH balance increased by the expected amount
         assertEq(
-            WETH.balanceOf(address(memecoinTreasury)),
-            initialBalance + _flethAdded,
-            'flETH should have been added'
+            WETH.balanceOf(address(memecoinTreasury)), initialBalance + _flethAdded, 'flETH should have been added'
         );
     }
-
 }

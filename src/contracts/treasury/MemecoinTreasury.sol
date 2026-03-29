@@ -10,12 +10,11 @@ import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {MemecoinFinder} from '@flaunch/types/MemecoinFinder.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TreasuryActionManager} from '@flaunch/treasury/ActionManager.sol';
+import {MemecoinFinder} from '@flaunch/types/MemecoinFinder.sol';
 
 import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
-
 
 /**
  * 就三个方法，initialize、executeAction、claimFees。初始化，执行动作，领取费用。执行动作，类似与工厂方法。
@@ -25,7 +24,6 @@ import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
  * 允许批准的操作由`PoolCreator`执行，使用他们的{MemecoinTreasury}中的代币。
  */
 contract MemecoinTreasury is Initializable, ReentrancyGuard {
-
     using MemecoinFinder for PoolKey;
     using PoolIdLibrary for PoolKey;
 
@@ -53,7 +51,12 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
      * @param _nativeToken The native token address used by Flaunch
      * @param _poolKey The pool that is being actioned against
      */
-    function initialize(address payable _positionManager, address _actionManager, address _nativeToken, PoolKey memory _poolKey) public initializer {
+    function initialize(
+        address payable _positionManager,
+        address _actionManager,
+        address _nativeToken,
+        PoolKey memory _poolKey
+    ) public initializer {
         actionManager = TreasuryActionManager(_actionManager);
         nativeToken = _nativeToken;
         poolKey = _poolKey;
@@ -70,11 +73,15 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
      */
     function executeAction(address _action, bytes memory _data) public nonReentrant {
         // Ensure the action is approved 确保操作被批准
-        if (!actionManager.approvedActions(_action)) revert ActionNotApproved();
+        if (!actionManager.approvedActions(_action)) {
+            revert ActionNotApproved();
+        }
 
         // Make sure the caller is the owner of the corresponding ERC721
         address poolCreator = poolKey.memecoin(nativeToken).creator();
-        if (poolCreator != msg.sender) revert Unauthorized();
+        if (poolCreator != msg.sender) {
+            revert Unauthorized();
+        }
 
         IERC20 token0 = IERC20(Currency.unwrap(poolKey.currency0));
         IERC20 token1 = IERC20(Currency.unwrap(poolKey.currency1));
@@ -88,7 +95,7 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
         claimFees();
 
         // Call the execute function on the action contract 调用操作合约的execute函数
-        ITreasuryAction(_action).execute(poolKey, _data);  // 调用所有行为的execute方法
+        ITreasuryAction(_action).execute(poolKey, _data); // 调用所有行为的execute方法
         emit ActionExecuted(_action, poolKey, _data);
 
         // Unapprove all tokens after execution 在执行后撤销所有代币的批准
@@ -111,6 +118,5 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
      * Allows the contract to receive ETH when withdrawn from the flETH token.
      * 允许合约接收ETH，当从flETH代币中提取时。
      */
-    receive () external payable {}
-
+    receive() external payable {}
 }

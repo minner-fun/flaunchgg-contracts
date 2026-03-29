@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {MerkleAirdrop} from '@flaunch/creator-tools/MerkleAirdrop.sol';
 
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
 
-
 /**
  * If a {MemecoinTreasury} receives an allocation of tokens from a {MerkleAirdrop}, then this
  * contract allows them to claim it by proxy.
  */
 contract ClaimFeesAction is ITreasuryAction {
-
     using SafeCast for uint;
 
     /// The {MerkleAirdrop} contract address
@@ -41,7 +39,9 @@ contract ClaimFeesAction is ITreasuryAction {
      *
      * @param _merkleAirdrop The {MerkleAirdrop} contract address
      */
-    constructor (address payable _merkleAirdrop) {
+    constructor(
+        address payable _merkleAirdrop
+    ) {
         merkleAirdrop = MerkleAirdrop(_merkleAirdrop);
     }
 
@@ -90,6 +90,5 @@ contract ClaimFeesAction is ITreasuryAction {
     /**
      * Allows ETH claims to be made.
      */
-    receive () external payable {}
-
+    receive() external payable {}
 }

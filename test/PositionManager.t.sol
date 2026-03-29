@@ -7,30 +7,31 @@ import {console2} from 'forge-std/console2.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
-import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
+import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+
 import {Flaunch} from '@flaunch/Flaunch.sol';
-import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
+
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
 import {UniswapHookEvents} from '@flaunch/libraries/UniswapHookEvents.sol';
+import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
 
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
 import {FlaunchTest} from './FlaunchTest.sol';
 
-
 contract PositionManagerTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
     }
@@ -81,7 +82,7 @@ contract PositionManagerTest is FlaunchTest {
 
     function test_CanFlaunch_Single() public flipTokens(false) {
         uint24 _creatorFeeAllocation = 5000; // 50%
-        
+
         address memecoin = positionManager.flaunch(
             PositionManager.FlaunchParams({
                 name: 'Token Name',
@@ -100,7 +101,6 @@ contract PositionManagerTest is FlaunchTest {
 
         // console2.log("TokenSupply.INITIAL_SUPPLY", TokenSupply.INITIAL_SUPPLY);
         assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), address(this));
-        
     }
 
     function test_CanMassFlaunch(uint8 flaunchCount, bool _flipped) public flipTokens(_flipped) {
@@ -181,7 +181,9 @@ contract PositionManagerTest is FlaunchTest {
         );
     }
 
-    function test_CannotScheduleFlaunchWithLargeDuration(uint _duration) public {
+    function test_CannotScheduleFlaunchWithLargeDuration(
+        uint _duration
+    ) public {
         vm.assume(_duration > flaunch.MAX_SCHEDULE_DURATION());
 
         vm.expectRevert();
@@ -482,10 +484,16 @@ contract PositionManagerTest is FlaunchTest {
         flaunch.burn(tokenId);
     }
 
-    function test_CannotFlaunchWithInvalidCreatorFeeAllocation(uint24 _creatorFeeAllocation) public {
+    function test_CannotFlaunchWithInvalidCreatorFeeAllocation(
+        uint24 _creatorFeeAllocation
+    ) public {
         vm.assume(_creatorFeeAllocation > 100_00);
 
-        vm.expectRevert(abi.encodeWithSelector(Flaunch.CreatorFeeAllocationInvalid.selector, _creatorFeeAllocation, flaunch.MAX_CREATOR_ALLOCATION()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Flaunch.CreatorFeeAllocationInvalid.selector, _creatorFeeAllocation, flaunch.MAX_CREATOR_ALLOCATION()
+            )
+        );
         positionManager.flaunch(
             PositionManager.FlaunchParams({
                 name: 'Token Name',
@@ -684,7 +692,9 @@ contract PositionManagerTest is FlaunchTest {
         );
 
         // After the initial premine swap, we should not be able to swap on the premine pool if it is scheduled
-        if (isScheduled) { vm.expectRevert(); }
+        if (isScheduled) {
+            vm.expectRevert();
+        }
         poolSwap.swap(
             preminePoolKey,
             IPoolManager.SwapParams({
@@ -696,5 +706,4 @@ contract PositionManagerTest is FlaunchTest {
 
         vm.stopPrank();
     }
-
 }

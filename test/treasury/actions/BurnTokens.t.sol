@@ -4,17 +4,15 @@ pragma solidity ^0.8.26;
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {BurnTokensAction, ITreasuryAction} from '@flaunch/treasury/actions/BurnTokens.sol';
-import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
+import {BurnTokensAction, ITreasuryAction} from '@flaunch/treasury/actions/BurnTokens.sol';
 
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
 import {FlaunchTest} from '../../FlaunchTest.sol';
 
-
 contract BurnTokensActionTest is FlaunchTest {
-
     PoolKey poolKey;
     BurnTokensAction action;
     MemecoinTreasury memecoinTreasury;
@@ -75,5 +73,4 @@ contract BurnTokensActionTest is FlaunchTest {
 
         memecoinTreasury.executeAction(address(action), '');
     }
-
 }

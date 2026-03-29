@@ -3,24 +3,23 @@ pragma solidity ^0.8.26;
 
 import {MerkleProofLib} from '@solady/utils/MerkleProofLib.sol';
 
-import {IMerkleAirdrop} from '@flaunch-interfaces/IMerkleAirdrop.sol';
 import {BaseAirdrop} from './BaseAirdrop.sol';
-
+import {IMerkleAirdrop} from '@flaunch-interfaces/IMerkleAirdrop.sol';
 
 /**
  * A contract that allows the creator to create a merkle airdrop in any ERC20 token or ETH.
  */
 contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
-
     /// Holds a count of airdrops that each creator has added. This is used to validate the
     /// `_airdropIndex` that is passed in with calls.
-    mapping (address _creator => uint _airdropsCount) public airdropsCount;
+    mapping(address _creator => uint _airdropsCount) public airdropsCount;
 
     /// Maps airdrop data for each creator's index to the airdrop
-    mapping (address _creator => mapping(uint _index => AirdropData _airdrop)) internal _airdropData;
+    mapping(address _creator => mapping(uint _index => AirdropData _airdrop)) internal _airdropData;
 
     /// Maps the airdrops that a user has claimed
-    mapping (address _creator => mapping(uint _index => mapping(address _user => bool _isAirdropClaimed))) public isAirdropClaimed;
+    mapping(address _creator => mapping(uint _index => mapping(address _user => bool _isAirdropClaimed))) public
+        isAirdropClaimed;
 
     /**
      * Sets our Ownable owner to the caller and maps our contract addresses.
@@ -28,15 +27,14 @@ contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
      * @param _fleth The {FLETH} contract address
      * @param _treasuryManagerFactory The {ITreasuryManagerFactory} contract address
      */
-    constructor(address _fleth, address _treasuryManagerFactory) BaseAirdrop(_fleth, _treasuryManagerFactory) {
-    }
+    constructor(address _fleth, address _treasuryManagerFactory) BaseAirdrop(_fleth, _treasuryManagerFactory) {}
 
     /**
      * Allows the approved contracts to add a new token or ETH airdrop.
-     * 
+     *
      * @dev If the airdrop is in ETH, the caller can send ETH to this contract which gets converted
      * into FLETH internally.
-     * 
+     *
      * @param _creator The creator of the airdrop
      * @param _airdropIndex The index of the airdrop
      * @param _token The token to be airdropped. address(0) for ETH
@@ -55,9 +53,15 @@ contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
         string calldata _merkleDataIPFSHash
     ) external payable override(IMerkleAirdrop) onlyApprovedAirdropCreators {
         // Validate that the airdrop is configurated as expected
-        if (_airdropIndex != airdropsCount[_creator]) revert InvalidAirdropIndex();
-        if (_airdropData[_creator][_airdropIndex].merkleRoot != bytes32(0)) revert AirdropAlreadyExists();
-        if (_airdropEndTime <= block.timestamp) revert AirdropExpired();
+        if (_airdropIndex != airdropsCount[_creator]) {
+            revert InvalidAirdropIndex();
+        }
+        if (_airdropData[_creator][_airdropIndex].merkleRoot != bytes32(0)) {
+            revert AirdropAlreadyExists();
+        }
+        if (_airdropEndTime <= block.timestamp) {
+            revert AirdropExpired();
+        }
 
         // Pull in the tokens from the sender
         uint amount = _pullTokens(_token, _amount);
@@ -80,7 +84,7 @@ contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
 
     /**
      * Allows a user to claim their airdrop amount, if they are part of the merkle tree.
-     * 
+     *
      * @param _creator The creator of the airdrop
      * @param _airdropIndex The index of the airdrop
      * @param _amount The amount of tokens to claim. Must match the amount in the merkle proof.
@@ -118,20 +122,26 @@ contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
 
     /**
      * Allows the creator to withdraw the remaining airdrop amount, after the airdrop has ended.
-     * 
+     *
      * @param _airdropIndex The index of the airdrop
      *
      * @return tokensWithdrawn The amount of tokens withdrawn
      */
-    function creatorWithdraw(uint _airdropIndex) external override(IMerkleAirdrop) returns (uint tokensWithdrawn) {
+    function creatorWithdraw(
+        uint _airdropIndex
+    ) external override(IMerkleAirdrop) returns (uint tokensWithdrawn) {
         // Ensure that the airdrop specified is not currently active
-        if (isAirdropActive(msg.sender, _airdropIndex)) revert AirdropInProgress();
+        if (isAirdropActive(msg.sender, _airdropIndex)) {
+            revert AirdropInProgress();
+        }
 
         // Update our airdrop to remove the number of tokens available
         AirdropData storage airdrop = _airdropData[msg.sender][_airdropIndex];
 
         // Ensure that the airdrop existed
-        if (airdrop.merkleRoot == bytes32(0)) revert InvalidAirdrop();
+        if (airdrop.merkleRoot == bytes32(0)) {
+            revert InvalidAirdrop();
+        }
 
         tokensWithdrawn = airdrop.amountLeft;
         airdrop.amountLeft = 0;
@@ -172,7 +182,10 @@ contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
      *
      * @return AirdropData The airdrop data
      */
-    function airdropData(address _creator, uint _airdropIndex) external view override(IMerkleAirdrop) returns (AirdropData memory) {
+    function airdropData(
+        address _creator,
+        uint _airdropIndex
+    ) external view override(IMerkleAirdrop) returns (AirdropData memory) {
         return _airdropData[_creator][_airdropIndex];
     }
 
@@ -184,7 +197,10 @@ contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
      *
      * @return bool If the airdrop is currently active
      */
-    function isAirdropActive(address _creator, uint _airdropIndex) public view override(IMerkleAirdrop) returns (bool) {
+    function isAirdropActive(
+        address _creator,
+        uint _airdropIndex
+    ) public view override(IMerkleAirdrop) returns (bool) {
         return _airdropData[_creator][_airdropIndex].airdropEndTime >= block.timestamp;
     }
 
@@ -206,9 +222,15 @@ contract MerkleAirdrop is BaseAirdrop, IMerkleAirdrop {
         bytes32[] calldata _merkleProof
     ) internal {
         // Ensure that the airdrop we have referenced is valid to be claimed against
-        if (!isAirdropActive(_creator, _airdropIndex)) revert AirdropEnded();
-        if (isAirdropClaimed[_creator][_airdropIndex][_claimant]) revert AirdropAlreadyClaimed();
-        if (!isPartOfMerkleTree(_creator, _airdropIndex, _claimant, _amount, _merkleProof)) revert MerkleVerificationFailed();
+        if (!isAirdropActive(_creator, _airdropIndex)) {
+            revert AirdropEnded();
+        }
+        if (isAirdropClaimed[_creator][_airdropIndex][_claimant]) {
+            revert AirdropAlreadyClaimed();
+        }
+        if (!isPartOfMerkleTree(_creator, _airdropIndex, _claimant, _amount, _merkleProof)) {
+            revert MerkleVerificationFailed();
+        }
 
         // Load our airdrop data
         AirdropData storage airdrop = _airdropData[_creator][_airdropIndex];

@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {CustomRevert} from '@uniswap/v4-core/src/libraries/CustomRevert.sol';
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
-import {PauseCalculator} from '@flaunch/fees/PauseCalculator.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {PauseCalculator} from '@flaunch/fees/PauseCalculator.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract PauseCalculatorTest is FlaunchTest {
-
     PauseCalculator feeCalculator;
 
     function setUp() public {
@@ -119,5 +118,4 @@ contract PauseCalculatorTest is FlaunchTest {
             })
         );
     }
-
 }

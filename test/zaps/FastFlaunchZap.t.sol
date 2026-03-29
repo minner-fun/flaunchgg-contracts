@@ -10,33 +10,36 @@ import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {FlaunchTest} from 'test/FlaunchTest.sol';
 
 contract FastFlaunchZapTests is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
     }
 
-    function test_CanFastFlaunch(bool _flipped) public flipTokens(_flipped) {
-        address memecoin = fastFlaunchZap.flaunch(FastFlaunchZap.FastFlaunchParams({
-            name: 'Token Name',
-            symbol: 'TOKEN',
-            tokenUri: 'https://flaunch.gg/',
-            creator: address(this)
-        }));
+    function test_CanFastFlaunch(
+        bool _flipped
+    ) public flipTokens(_flipped) {
+        address memecoin = fastFlaunchZap.flaunch(
+            FastFlaunchZap.FastFlaunchParams({
+                name: 'Token Name',
+                symbol: 'TOKEN',
+                tokenUri: 'https://flaunch.gg/',
+                creator: address(this)
+            })
+        );
 
         PoolId poolId = positionManager.poolKey(memecoin).toId();
 
         // Confirm the fair launch supply
-        assertEq(fairLaunch.fairLaunchInfo(poolId).supply, 60e27, "Fair launch supply is not 60% of the total supply");
+        assertEq(fairLaunch.fairLaunchInfo(poolId).supply, 60e27, 'Fair launch supply is not 60% of the total supply');
 
         // Confirm that the fair launch has started
-        assertEq(fairLaunch.inFairLaunchWindow(poolId), true, "Fair launch has not started");
+        assertEq(fairLaunch.inFairLaunchWindow(poolId), true, 'Fair launch has not started');
 
         // Confirm the creator
         uint tokenId = flaunch.tokenId(memecoin);
-        assertEq(flaunch.ownerOf(tokenId), address(this), "Creator is not the owner of the memecoin");
+        assertEq(flaunch.ownerOf(tokenId), address(this), 'Creator is not the owner of the memecoin');
 
         // Confirm the memecoin metadata
         assertEq(IMemecoin(memecoin).name(), 'Token Name');

@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Ownable} from "@solady/auth/Ownable.sol";
+import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {IHooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
-import {toBalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 
-import {FairLaunch} from "@flaunch/hooks/FairLaunch.sol";
-import {HypeFeeCalculator} from "@flaunch/fees/HypeFeeCalculator.sol";
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+
+import {HypeFeeCalculator} from '@flaunch/fees/HypeFeeCalculator.sol';
+import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
-import {FlaunchTest} from "../FlaunchTest.sol";
+import {FlaunchTest} from '../FlaunchTest.sol';
 
 contract HypeFeeCalculatorTest is FlaunchTest {
     using PoolIdLibrary for PoolKey;
@@ -64,27 +65,27 @@ contract HypeFeeCalculatorTest is FlaunchTest {
         feeCalculator.setFlaunchParams(poolId, abi.encode(1000));
     }
 
-    function test_CanSetTargetTokensPerSec(uint256 targetRate) public {
+    function test_CanSetTargetTokensPerSec(
+        uint targetRate
+    ) public {
         vm.assume(targetRate > 0);
 
         vm.prank(POSITION_MANAGER);
         feeCalculator.setFlaunchParams(poolId, abi.encode(targetRate));
 
-        (bool isHypeFeeEnabled, uint256 totalTokensSold, uint256 targetTokensPerSec) = feeCalculator
-            .poolInfos(poolId);
+        (bool isHypeFeeEnabled, uint totalTokensSold, uint targetTokensPerSec) = feeCalculator.poolInfos(poolId);
         assertEq(isHypeFeeEnabled, true);
         assertEq(targetTokensPerSec, targetRate);
         assertEq(totalTokensSold, 0);
     }
 
     function test_CanDisableHypeFee() public {
-        uint256 targetRate = 0;
+        uint targetRate = 0;
 
         vm.prank(POSITION_MANAGER);
         feeCalculator.setFlaunchParams(poolId, abi.encode(targetRate));
 
-        (bool isHypeFeeEnabled, uint256 totalTokensSold, uint256 targetTokensPerSec) = feeCalculator
-            .poolInfos(poolId);
+        (bool isHypeFeeEnabled, uint totalTokensSold, uint targetTokensPerSec) = feeCalculator.poolInfos(poolId);
         assertEq(isHypeFeeEnabled, false);
         assertEq(targetTokensPerSec, 0);
         assertEq(totalTokensSold, 0);
@@ -94,8 +95,7 @@ contract HypeFeeCalculatorTest is FlaunchTest {
         vm.prank(POSITION_MANAGER);
         feeCalculator.setFlaunchParams(poolId, bytes(''));
 
-        (bool isHypeFeeEnabled, uint256 totalTokensSold, uint256 targetTokensPerSec) = feeCalculator
-            .poolInfos(poolId);
+        (bool isHypeFeeEnabled, uint totalTokensSold, uint targetTokensPerSec) = feeCalculator.poolInfos(poolId);
         assertEq(isHypeFeeEnabled, false);
         assertEq(targetTokensPerSec, 0);
         assertEq(totalTokensSold, 0);
@@ -112,7 +112,9 @@ contract HypeFeeCalculatorTest is FlaunchTest {
         feeCalculator.setMaxSwapPercentPerTx(1_00);
     }
 
-    function test_CanSetMaxSwapPercentPerTx(uint256 maxSwapPercentPerTx) public {
+    function test_CanSetMaxSwapPercentPerTx(
+        uint maxSwapPercentPerTx
+    ) public {
         vm.assume(maxSwapPercentPerTx <= 1_00);
 
         feeCalculator.setMaxSwapPercentPerTx(maxSwapPercentPerTx);
@@ -122,9 +124,9 @@ contract HypeFeeCalculatorTest is FlaunchTest {
 
     /// trackSwap()
     function test_CannotTrackSwapIfExceedsMaxSwapPercentPerTx() public {
-        (uint256 fairLaunchStart, ) = _setUpFairLaunch();
+        (uint fairLaunchStart,) = _setUpFairLaunch();
 
-        uint256 maxSwapPercentPerTx = 1_00;
+        uint maxSwapPercentPerTx = 1_00;
         feeCalculator.setMaxSwapPercentPerTx(maxSwapPercentPerTx);
 
         int128 swapPercent = 2_00;
@@ -140,19 +142,10 @@ contract HypeFeeCalculatorTest is FlaunchTest {
     function test_ReturnsBaseFeeOutsideFairLaunch() public {
         // Mock fair launch not active
         vm.mockCall(
-            address(mockFairLaunch),
-            abi.encodeCall(mockFairLaunch.inFairLaunchWindow, poolId),
-            abi.encode(false)
+            address(mockFairLaunch), abi.encodeCall(mockFairLaunch.inFairLaunchWindow, poolId), abi.encode(false)
         );
 
-        assertEq(
-            feeCalculator.determineSwapFee(
-                poolKey,
-                _getSwapParams(1e18),
-                baseFee
-            ),
-            baseFee
-        );
+        assertEq(feeCalculator.determineSwapFee(poolKey, _getSwapParams(1e18), baseFee), baseFee);
     }
 
     function test_ReturnsBaseFeeForDisabledHypeFee() public {
@@ -160,18 +153,11 @@ contract HypeFeeCalculatorTest is FlaunchTest {
         vm.prank(POSITION_MANAGER);
         feeCalculator.setFlaunchParams(poolId, abi.encode(0));
 
-        assertEq(
-            feeCalculator.determineSwapFee(
-                poolKey,
-                _getSwapParams(1e18),
-                baseFee
-            ),
-            baseFee
-        );
+        assertEq(feeCalculator.determineSwapFee(poolKey, _getSwapParams(1e18), baseFee), baseFee);
     }
 
     function test_CalculatesHypeFee() public {
-        (uint256 fairLaunchStart, uint256 fairLaunchEnd) = _setUpFairLaunch();
+        (uint fairLaunchStart, uint fairLaunchEnd) = _setUpFairLaunch();
         int128 swapAmount;
 
         // First swap at target rate - should get minimum fee
@@ -179,77 +165,49 @@ contract HypeFeeCalculatorTest is FlaunchTest {
         // 1x target rate
         swapAmount = 1000;
         // determineSwapFee() considers the swap amount in this tx, even before the trackSwap() is called
-        uint24 fee0 = feeCalculator.determineSwapFee(
-            poolKey,
-            _getSwapParams(swapAmount),
-            baseFee
-        );
-        assertEq(
-            fee0,
-            feeCalculator.MINIMUM_FEE_SCALED() / 100,
-            "fee0 error"
-        );
+        uint24 fee0 = feeCalculator.determineSwapFee(poolKey, _getSwapParams(swapAmount), baseFee);
+        assertEq(fee0, feeCalculator.MINIMUM_FEE_SCALED() / 100, 'fee0 error');
         vm.prank(POSITION_MANAGER);
         _trackSwap(swapAmount);
 
         // Second swap slightly above target - should get increased fee
         vm.warp(fairLaunchStart + 2);
         swapAmount = 1500;
-        uint24 fee1 = feeCalculator.determineSwapFee(
-            poolKey,
-            _getSwapParams(swapAmount),
-            baseFee
-        );
-        assertEq(fee1, 13_25, "fee1 error");
+        uint24 fee1 = feeCalculator.determineSwapFee(poolKey, _getSwapParams(swapAmount), baseFee);
+        assertEq(fee1, 13_25, 'fee1 error');
         vm.prank(POSITION_MANAGER);
         _trackSwap(swapAmount);
 
         // Third swap well above target - should get even higher fee
         vm.warp(fairLaunchStart + 3);
         swapAmount = 3000;
-        uint24 fee2 = feeCalculator.determineSwapFee(
-            poolKey,
-            _getSwapParams(swapAmount),
-            baseFee
-        );
-        assertEq(fee2, 41_81, "fee2 error");
+        uint24 fee2 = feeCalculator.determineSwapFee(poolKey, _getSwapParams(swapAmount), baseFee);
+        assertEq(fee2, 41_81, 'fee2 error');
         vm.prank(POSITION_MANAGER);
         _trackSwap(swapAmount);
 
         // Allow some time to pass - rate should decrease and fee should lower
         vm.warp(fairLaunchStart + 10);
         swapAmount = 1;
-        uint24 fee3 = feeCalculator.determineSwapFee(
-            poolKey,
-            _getSwapParams(swapAmount),
-            baseFee
-        );
-        assertEq(fee3, 1_00, "fee3 error");
+        uint24 fee3 = feeCalculator.determineSwapFee(poolKey, _getSwapParams(swapAmount), baseFee);
+        assertEq(fee3, 1_00, 'fee3 error');
 
         // Another large swap - fee should spike again
         swapAmount = 5000;
-        uint24 fee4 = feeCalculator.determineSwapFee(
-            poolKey,
-            _getSwapParams(swapAmount),
-            baseFee
-        );
-        assertEq(fee4, 3_45, "fee4 error");
+        uint24 fee4 = feeCalculator.determineSwapFee(poolKey, _getSwapParams(swapAmount), baseFee);
+        assertEq(fee4, 3_45, 'fee4 error');
         vm.prank(POSITION_MANAGER);
         _trackSwap(swapAmount);
 
         // Skip to near end of fair launch - rate and fee should be much lower
         vm.warp(fairLaunchEnd - 1 minutes);
         swapAmount = 1;
-        uint24 fee5 = feeCalculator.determineSwapFee(
-            poolKey,
-            _getSwapParams(swapAmount),
-            baseFee
-        );
-        assertEq(fee5, 1_00, "fee5 error");
+        uint24 fee5 = feeCalculator.determineSwapFee(poolKey, _getSwapParams(swapAmount), baseFee);
+        assertEq(fee5, 1_00, 'fee5 error');
     }
 
     function test_ReturnsMinimumFeeForLowRate() public {
-        (uint256 fairLaunchStart, ) = _setUpFairLaunch();
+        (uint fairLaunchStart,) = _setUpFairLaunch();
 
         // Track small swap
         vm.warp(fairLaunchStart + 1);
@@ -257,24 +215,18 @@ contract HypeFeeCalculatorTest is FlaunchTest {
         _trackSwap(500); // 0.5x target rate
 
         // Fee should be minimum since rate is below target
-        uint24 fee = feeCalculator.determineSwapFee(
-            poolKey,
-            _getSwapParams(1),
-            baseFee
-        );
+        uint24 fee = feeCalculator.determineSwapFee(poolKey, _getSwapParams(1), baseFee);
         assertEq(fee, feeCalculator.MINIMUM_FEE_SCALED() / 100);
     }
 
-    function _setUpFairLaunch() internal returns (uint256 fairLaunchStart, uint256 fairLaunchEnd) {
-        uint256 targetRate = 1000; // tokens per second
+    function _setUpFairLaunch() internal returns (uint fairLaunchStart, uint fairLaunchEnd) {
+        uint targetRate = 1000; // tokens per second
         fairLaunchStart = block.timestamp;
         fairLaunchEnd = fairLaunchStart + 30 minutes;
 
         // Setup fair launch window
         vm.mockCall(
-            address(mockFairLaunch),
-            abi.encodeCall(mockFairLaunch.inFairLaunchWindow, poolId),
-            abi.encode(true)
+            address(mockFairLaunch), abi.encodeCall(mockFairLaunch.inFairLaunchWindow, poolId), abi.encode(true)
         );
 
         vm.mockCall(
@@ -297,19 +249,19 @@ contract HypeFeeCalculatorTest is FlaunchTest {
         feeCalculator.setFlaunchParams(poolId, abi.encode(targetRate));
     }
 
-    function _trackSwap(int128 _amountSpecified) internal {
+    function _trackSwap(
+        int128 _amountSpecified
+    ) internal {
         feeCalculator.trackSwap(
             address(1),
             poolKey,
             IPoolManager.SwapParams({
                 zeroForOne: true,
                 amountSpecified: int(_amountSpecified),
-                sqrtPriceLimitX96: uint160(
-                    int160(TickMath.minUsableTick(poolKey.tickSpacing))
-                )
+                sqrtPriceLimitX96: uint160(int160(TickMath.minUsableTick(poolKey.tickSpacing)))
             }),
             toBalanceDelta(-(_amountSpecified / 2), _amountSpecified),
-            ""
+            ''
         );
     }
 }

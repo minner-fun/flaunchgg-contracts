@@ -7,12 +7,10 @@ import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
 
-
 /**
  * Burns non-native tokens held by the {TokenTreasury}.
  */
 contract BurnTokensAction is ITreasuryAction {
-
     /// The native token used by the Flaunch {PositionManager}
     Currency public immutable nativeToken;
 
@@ -21,7 +19,9 @@ contract BurnTokensAction is ITreasuryAction {
      *
      * @param _nativeToken The ERC20 native token
      */
-    constructor (address _nativeToken) {
+    constructor(
+        address _nativeToken
+    ) {
         nativeToken = Currency.wrap(_nativeToken);
     }
 
@@ -48,5 +48,4 @@ contract BurnTokensAction is ITreasuryAction {
             _poolKey.currency0 == nativeToken ? -int(amount) : int(0)
         );
     }
-
 }

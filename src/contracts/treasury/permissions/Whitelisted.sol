@@ -7,13 +7,11 @@ import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
 
-
 /**
  * Allows only whitelisted creators to deposit tokens into the group.
  * 只允许白名单创建者存入代币到组。
  */
 contract WhitelistedPermissions is IManagerPermissions {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error Unauthorized();
@@ -22,7 +20,7 @@ contract WhitelistedPermissions is IManagerPermissions {
     event ApprovedCreatorRemoved(address indexed _group, address indexed _creator);
 
     /// The approved creators for each group
-    mapping (address _group => EnumerableSet.AddressSet _approvedCreators) internal _approvedCreators;
+    mapping(address _group => EnumerableSet.AddressSet _approvedCreators) internal _approvedCreators;
 
     /// The factory that creates the treasury managers
     ITreasuryManagerFactory public immutable treasuryManagerFactory;
@@ -32,7 +30,9 @@ contract WhitelistedPermissions is IManagerPermissions {
      *
      * @param _treasuryManagerFactory The factory that creates the treasury managers
      */
-    constructor (ITreasuryManagerFactory _treasuryManagerFactory) {
+    constructor(
+        ITreasuryManagerFactory _treasuryManagerFactory
+    ) {
         treasuryManagerFactory = _treasuryManagerFactory;
     }
 
@@ -84,5 +84,4 @@ contract WhitelistedPermissions is IManagerPermissions {
             }
         }
     }
-
 }

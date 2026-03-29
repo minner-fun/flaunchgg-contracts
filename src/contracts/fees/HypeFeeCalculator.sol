@@ -3,27 +3,26 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {FixedPointMathLib} from '@solady/utils/FixedPointMathLib.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+
 import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
 import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
 
-
 /**
  * Calculates hype fees during fair launch based on token sale rates.
  * The fee increases as the sale rate exceeds the target rate to discourage sniping.
  */
 contract HypeFeeCalculator is IFeeCalculator, Ownable {
-
     using PoolIdLibrary for PoolKey;
     using FixedPointMathLib for uint;
 
@@ -55,7 +54,7 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
     uint24 public constant MAXIMUM_FEE_SCALED = 50_0000; // 50% in bps scaled by 1_00
 
     /// 100% in bps
-    uint256 constant MAX_BPS = 100_00;
+    uint constant MAX_BPS = 100_00;
 
     /// The FairLaunch contract reference
     FairLaunch public immutable fairLaunch;
@@ -67,7 +66,7 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
     mapping(PoolId => PoolInfo) public poolInfos;
 
     /// The maximum swap amount % per tx in bps
-    uint256 public maxSwapPercentPerTx = 100_00; // 100%
+    uint public maxSwapPercentPerTx = 100_00; // 100%
 
     error SwapExceedsMaxSwapPercentPerTx();
     error InvalidMaxSwapPercentPerTx();
@@ -78,7 +77,7 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
      * @param _fairLaunch The address of our {FairLaunch} contract
      * @param _nativeToken The native token used for Flaunch
      */
-    constructor (FairLaunch _fairLaunch, address _nativeToken) {
+    constructor(FairLaunch _fairLaunch, address _nativeToken) {
         fairLaunch = _fairLaunch;
         nativeToken = _nativeToken;
 
@@ -117,8 +116,12 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
      *
      * @param _maxSwapPercentPerTx The maximum swap amount % per tx in bps
      */
-    function setMaxSwapPercentPerTx(uint256 _maxSwapPercentPerTx) external onlyOwner {
-        if (_maxSwapPercentPerTx > MAX_BPS) revert InvalidMaxSwapPercentPerTx();
+    function setMaxSwapPercentPerTx(
+        uint _maxSwapPercentPerTx
+    ) external onlyOwner {
+        if (_maxSwapPercentPerTx > MAX_BPS) {
+            revert InvalidMaxSwapPercentPerTx();
+        }
         maxSwapPercentPerTx = _maxSwapPercentPerTx;
     }
 
@@ -148,7 +151,9 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
         uint elapsedSeconds = block.timestamp - (flInfo.endsAt - FAIR_LAUNCH_WINDOW);
 
         // Prevent division by zero
-        if (elapsedSeconds == 0) return _baseFee;
+        if (elapsedSeconds == 0) {
+            return _baseFee;
+        }
 
         // Calculate current sale rate
         uint tokensBoughtInThisSwap = _getTokensBoughtFromFairLaunch(_poolKey, flInfo, _params);
@@ -163,18 +168,15 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
         } else {
             // Calculate hype fee
             uint rateExcess = currentSaleRatePerSec - targetTokensPerSec;
-            uint hypeFeeScaled = MINIMUM_FEE_SCALED +
-                ((MAXIMUM_FEE_SCALED - MINIMUM_FEE_SCALED) * rateExcess) /
-                targetTokensPerSec;
+            uint hypeFeeScaled =
+                MINIMUM_FEE_SCALED + ((MAXIMUM_FEE_SCALED - MINIMUM_FEE_SCALED) * rateExcess) / targetTokensPerSec;
 
             // Cap at MAX_FEE
             swapFeeScaled = FixedPointMathLib.min(hypeFeeScaled, MAXIMUM_FEE_SCALED);
         }
 
         // Ensure that the swap fee is at least the base fee. scale down the result to bps
-        swapFee_ = uint24(
-            FixedPointMathLib.max(swapFeeScaled, _baseFee * 1_00) / 1_00
-        );
+        swapFee_ = uint24(FixedPointMathLib.max(swapFeeScaled, _baseFee * 1_00) / 1_00);
     }
 
     /**
@@ -184,9 +186,9 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
      * @param _delta The amount owed to the caller (positive) or owed to the pool (negative)
      */
     function trackSwap(
-        address /* _sender */,
+        address, /* _sender */
         PoolKey calldata _key,
-        IPoolManager.SwapParams calldata /* _params */,
+        IPoolManager.SwapParams calldata, /* _params */
         BalanceDelta _delta,
         bytes calldata /* _hookData */
     ) external override {
@@ -205,16 +207,14 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
         }
 
         // Absolute amount of non-native token swapped
-        int tokenDelta = int(
-            Currency.unwrap(_key.currency0) == nativeToken
-                ? _delta.amount1()
-                : _delta.amount0()
-        );
+        int tokenDelta = int(Currency.unwrap(_key.currency0) == nativeToken ? _delta.amount1() : _delta.amount0());
         uint tokensSold = uint(tokenDelta < 0 ? -tokenDelta : tokenDelta);
 
         uint maxSwapAmount = (fairLaunch.fairLaunchInfo(poolId).supply * maxSwapPercentPerTx) / MAX_BPS;
 
-        if (tokensSold > maxSwapAmount) revert SwapExceedsMaxSwapPercentPerTx();
+        if (tokensSold > maxSwapAmount) {
+            revert SwapExceedsMaxSwapPercentPerTx();
+        }
 
         // Update the total tokens sold
         poolInfo.totalTokensSold += tokensSold;
@@ -230,7 +230,9 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
      *
      * @return The target tokens per second
      */
-    function getTargetTokensPerSec(PoolId _poolId) public view returns (uint) {
+    function getTargetTokensPerSec(
+        PoolId _poolId
+    ) public view returns (uint) {
         uint storedTargetTokensPerSec = poolInfos[_poolId].targetTokensPerSec;
 
         //
@@ -293,9 +295,7 @@ contract HypeFeeCalculator is IFeeCalculator, Ownable {
         uint _baseAmount,
         address _baseToken,
         address _quoteToken
-    ) internal pure returns (
-        uint quoteAmount_
-    ) {
+    ) internal pure returns (uint quoteAmount_) {
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(_tick);
 
         // Calculate `quoteAmount` with better precision if it doesn't overflow when multiplied

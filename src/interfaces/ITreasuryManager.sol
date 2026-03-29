@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Flaunch} from '@flaunch/Flaunch.sol';
 import {IFeeEscrowRegistry} from '@flaunch-interfaces/IFeeEscrowRegistry.sol';
 import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
-
+import {Flaunch} from '@flaunch/Flaunch.sol';
 
 /**
  * Acts as a middleware for revenue claims, allowing external protocols to build on top of Flaunch
  * and be able to have more granular control over the revenue yielded.
  */
 interface ITreasuryManager {
-
     /**
      * The Flaunch Token definition.
      *
@@ -72,7 +70,9 @@ interface ITreasuryManager {
      *
      * @return amount_ The balance of the specified recipient
      */
-    function balances(address _recipient) external view returns (uint amount_);
+    function balances(
+        address _recipient
+    ) external view returns (uint amount_);
 
     /**
      * Claims the fees for the specified recipient.
@@ -95,7 +95,9 @@ interface ITreasuryManager {
      *
      * @param _permissions The new deposit permissions contract
      */
-    function setPermissions(address _permissions) external;
+    function setPermissions(
+        address _permissions
+    ) external;
 
     /**
      * Transfers ownership of the contract to a new account (`newOwner`).
@@ -104,7 +106,9 @@ interface ITreasuryManager {
      *
      * @param _newManagerOwner The new address that will become the owner
      */
-    function transferManagerOwnership(address _newManagerOwner) external;
+    function transferManagerOwnership(
+        address _newManagerOwner
+    ) external;
 
     /**
      * Returns the fee escrow registry for the treasury manager.
@@ -112,5 +116,4 @@ interface ITreasuryManager {
      * @return The fee escrow registry for the treasury manager
      */
     function feeEscrowRegistry() external view returns (IFeeEscrowRegistry);
-
 }

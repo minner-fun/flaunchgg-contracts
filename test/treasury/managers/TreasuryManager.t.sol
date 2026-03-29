@@ -5,16 +5,18 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
-import {AddressFeeSplitManager} from '@flaunch/treasury/managers/AddressFeeSplitManager.sol';
-import {ClosedPermissions} from '@flaunch/treasury/permissions/Closed.sol';
 import {Flaunch} from '@flaunch/Flaunch.sol';
+
+import {PositionManager} from '@flaunch/PositionManager.sol';
 import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
 import {FeeEscrowRegistry} from '@flaunch/escrows/FeeEscrowRegistry.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
+import {AddressFeeSplitManager} from '@flaunch/treasury/managers/AddressFeeSplitManager.sol';
+
 import {RevenueManager} from '@flaunch/treasury/managers/RevenueManager.sol';
 import {StakingManager} from '@flaunch/treasury/managers/StakingManager.sol';
 import {TreasuryManager} from '@flaunch/treasury/managers/TreasuryManager.sol';
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
+import {ClosedPermissions} from '@flaunch/treasury/permissions/Closed.sol';
 import {WhitelistedPermissions} from '@flaunch/treasury/permissions/Whitelisted.sol';
 
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
@@ -26,7 +28,6 @@ import {FlaunchTest} from 'test/FlaunchTest.sol';
  * Tests core TreasuryManager functionality, using the RevenueManager as an example.
  */
 contract TreasuryManagerTest is FlaunchTest {
-
     /// Set our treasury manager contracts
     RevenueManager revenueManager;
 
@@ -41,16 +42,15 @@ contract TreasuryManagerTest is FlaunchTest {
         // Deploy our platform
         _deployPlatform();
 
-        address managerImplementation = address(new RevenueManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+        address managerImplementation =
+            address(new RevenueManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
         treasuryManagerFactory.approveManager(managerImplementation);
 
         // Deploy our {RevenueManager} implementation and initialize
         address payable implementation = treasuryManagerFactory.deployAndInitializeManager({
             _managerImplementation: managerImplementation,
             _owner: owner,
-            _data: abi.encode(
-                RevenueManager.InitializeParams(owner, 50_00)
-            )
+            _data: abi.encode(RevenueManager.InitializeParams(owner, 50_00))
         });
 
         // Set our revenue manager
@@ -101,7 +101,9 @@ contract TreasuryManagerTest is FlaunchTest {
         _depositToken(_caller, false);
     }
 
-    function test_Creator_Whitelisted_CanDepositWhenProtected(address _caller) public {
+    function test_Creator_Whitelisted_CanDepositWhenProtected(
+        address _caller
+    ) public {
         // Ensure that the caller is not the zero address
         vm.assume(_caller != address(0));
 
@@ -115,7 +117,9 @@ contract TreasuryManagerTest is FlaunchTest {
         _depositToken(_caller, false);
     }
 
-    function test_Creator_NotWhitelisted_CannotDepositWhenProtected(address _caller) public {
+    function test_Creator_NotWhitelisted_CannotDepositWhenProtected(
+        address _caller
+    ) public {
         // Ensure that the caller is not the owner, as this would bypass the approval requirement
         vm.assume(_caller != owner);
 
@@ -129,7 +133,9 @@ contract TreasuryManagerTest is FlaunchTest {
         _depositToken(_caller, true);
     }
 
-    function test_Creator_CannotApproveCreatorsIfNotManagerOwner(address _caller) public {
+    function test_Creator_CannotApproveCreatorsIfNotManagerOwner(
+        address _caller
+    ) public {
         // Ensure that the caller is not the owner
         vm.assume(_caller != owner);
 
@@ -170,7 +176,6 @@ contract TreasuryManagerTest is FlaunchTest {
         // Confirm that a creator that is either approved or unapproved cannot deposit a token, and
         // throws an error.
         _depositToken(_caller, true);
-
     }
 
     function test_CanSetPermissionsIfManagerOwner() public {
@@ -179,7 +184,9 @@ contract TreasuryManagerTest is FlaunchTest {
         _setPermissions(address(0));
     }
 
-    function test_CannotSetPermissionsIfNotManagerOwner(address _caller) public {
+    function test_CannotSetPermissionsIfNotManagerOwner(
+        address _caller
+    ) public {
         // Ensure that the caller is not the owner
         vm.assume(_caller != owner);
 
@@ -245,7 +252,9 @@ contract TreasuryManagerTest is FlaunchTest {
         assertEq(revenueManager.isValidCreator(_creators[2], ''), false);
     }
 
-    function test_CannotSetApprovedCreatorsIfNotManagerOwner(address _caller) public {
+    function test_CannotSetApprovedCreatorsIfNotManagerOwner(
+        address _caller
+    ) public {
         // Ensure that the caller is not the owner
         vm.assume(_caller != owner);
 
@@ -331,14 +340,14 @@ contract TreasuryManagerTest is FlaunchTest {
         // Set up 4 mock fee escrows with different amounts
         // 3 out of 4 should have fees, 1 should have 0
         uint[] memory feeAmounts = new uint[](4);
-        feeAmounts[0] = 1 ether;    // 1 ETH
-        feeAmounts[1] = 2.5 ether;  // 2.5 ETH  
-        feeAmounts[2] = 0;          // 0 ETH (no fees)
-        feeAmounts[3] = 0.5 ether;  // 0.5 ETH
-        
+        feeAmounts[0] = 1 ether; // 1 ETH
+        feeAmounts[1] = 2.5 ether; // 2.5 ETH
+        feeAmounts[2] = 0; // 0 ETH (no fees)
+        feeAmounts[3] = 0.5 ether; // 0.5 ETH
+
         // Expected total: 1 + 2.5 + 0 + 0.5 = 4 ETH
         uint expectedTotal = 4 ether;
-        
+
         // We need to provide sufficient flETH to the test contract to cover the total amount of fees
         deal(address(flETH), expectedTotal);
 
@@ -356,7 +365,7 @@ contract TreasuryManagerTest is FlaunchTest {
             IERC20(address(flETH)).approve(address(mockEscrows[i]), feeAmounts[i]);
 
             mockEscrows[i].allocateFees(
-                PoolId.wrap(bytes32('1')),  // The specific PoolId is not important
+                PoolId.wrap(bytes32('1')), // The specific PoolId is not important
                 address(revenueManager),
                 feeAmounts[i]
             );
@@ -365,25 +374,26 @@ contract TreasuryManagerTest is FlaunchTest {
             vm.prank(feeEscrowRegistry.owner());
             feeEscrowRegistry.addFeeEscrow(address(mockEscrows[i]), false);
         }
-        
+
         // Verify all escrows are registered
         address[] memory registeredEscrows = feeEscrowRegistry.feeEscrows();
         assertEq(registeredEscrows.length, 4);
-        
+
         // The recipient will be our RevenueManager contract, so that we can make our claim call
         address recipient = address(revenueManager);
 
         // Call the test registry's withdrawFees function directly. It doesn't actually matter that we don't
         // have any claim over any of the fees.
         revenueManager.claim();
-    
+
         // Verify that the RevenueManager withdrew the correct total amount
         assertEq(payable(recipient).balance, expectedTotal);
     }
 
     function testFork_CanDepositAllFlaunchDeploymentsIntoGroups() public forkBaseBlock(35_957_070) {
         // Deploy a new Staking Manager implementation
-        TreasuryManagerFactory treasuryManagerFactory = TreasuryManagerFactory(0x48af8b28DDC5e5A86c4906212fc35Fa808CA8763);
+        TreasuryManagerFactory treasuryManagerFactory =
+            TreasuryManagerFactory(0x48af8b28DDC5e5A86c4906212fc35Fa808CA8763);
 
         // Set up our AddressFeeSplitManager revenue split
         AddressFeeSplitManager.RecipientShare[] memory recipientShares = new AddressFeeSplitManager.RecipientShare[](2);
@@ -391,9 +401,12 @@ contract TreasuryManagerTest is FlaunchTest {
         recipientShares[1] = AddressFeeSplitManager.RecipientShare({recipient: address(2), share: 50_00000});
 
         vm.startPrank(treasuryManagerFactory.owner());
-        address addressManagerImplementation = address(new AddressFeeSplitManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
-        address revenueManagerImplementation = address(new RevenueManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
-        address stakingManagerImplementation = address(new StakingManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+        address addressManagerImplementation =
+            address(new AddressFeeSplitManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+        address revenueManagerImplementation =
+            address(new RevenueManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+        address stakingManagerImplementation =
+            address(new StakingManager(address(treasuryManagerFactory), address(feeEscrowRegistry)));
         treasuryManagerFactory.approveManager(addressManagerImplementation);
         treasuryManagerFactory.approveManager(revenueManagerImplementation);
         treasuryManagerFactory.approveManager(stakingManagerImplementation);
@@ -406,9 +419,7 @@ contract TreasuryManagerTest is FlaunchTest {
         );
 
         address payable revenueManager_ = treasuryManagerFactory.deployAndInitializeManager(
-            revenueManagerImplementation,
-            owner,
-            abi.encode(RevenueManager.InitializeParams(owner, 50_00))
+            revenueManagerImplementation, owner, abi.encode(RevenueManager.InitializeParams(owner, 50_00))
         );
 
         address payable stakingManager = treasuryManagerFactory.deployAndInitializeManager(
@@ -434,10 +445,13 @@ contract TreasuryManagerTest is FlaunchTest {
         for (uint i = 0; i < managers.length; ++i) {
             for (uint k = 0; k < flaunchContracts.length; ++k) {
                 // Check if we have commented out any of the Flaunch tokens and skip them to prevent false positives
-                if (flaunchContracts[k] == address(0)) continue;
+                if (flaunchContracts[k] == address(0)) {
+                    continue;
+                }
 
                 // Reference a FlaunchToken to test with
-                ITreasuryManager.FlaunchToken memory flaunchToken = ITreasuryManager.FlaunchToken(Flaunch(flaunchContracts[k]), i + 1);
+                ITreasuryManager.FlaunchToken memory flaunchToken =
+                    ITreasuryManager.FlaunchToken(Flaunch(flaunchContracts[k]), i + 1);
 
                 // Get the creator of the token so that we can prank them
                 address creator = flaunchToken.flaunch.ownerOf(flaunchToken.tokenId);
@@ -451,7 +465,9 @@ contract TreasuryManagerTest is FlaunchTest {
         }
     }
 
-    function _setPermissions(address _permissions) internal {
+    function _setPermissions(
+        address _permissions
+    ) internal {
         vm.startPrank(owner);
 
         // Ensure that the event is emitted
@@ -467,7 +483,9 @@ contract TreasuryManagerTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function _approveCreator(address _creator) internal {
+    function _approveCreator(
+        address _creator
+    ) internal {
         vm.startPrank(owner);
 
         // Set the approved creator
@@ -478,7 +496,9 @@ contract TreasuryManagerTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function _createERC721(address _recipient) internal returns (uint tokenId_) {
+    function _createERC721(
+        address _recipient
+    ) internal returns (uint tokenId_) {
         // Flaunch another memecoin to mint a tokenId
         address memecoin = positionManager.flaunch(
             PositionManager.FlaunchParams({
@@ -521,5 +541,4 @@ contract TreasuryManagerTest is FlaunchTest {
 
         vm.stopPrank();
     }
-
 }

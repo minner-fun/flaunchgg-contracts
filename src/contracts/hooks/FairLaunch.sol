@@ -5,15 +5,21 @@ import {AccessControl} from '@openzeppelin/contracts/access/AccessControl.sol'; 
 
 import {BeforeSwapDelta, toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol'; // 用于存储交换前的delta
 // beforeSwapDelta类似于BeforeSwapDelta。都是基于int256类型。然后附件了一些方法
-import {BalanceDelta, toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol'; // 用于存储交换后的delta
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol'; // 理解成加强版的address类型，附加了很多自定义的方法
-import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol'; //  FullMath 让你可以安全地计算 (a × b) / c，即使中间结果 a × b 超过 uint256 范围！
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol'; // 用于存储池管理器
-import {LiquidityAmounts} from '@uniswap/v4-core/test/utils/LiquidityAmounts.sol'; // 用于存储流动性数量
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol'; // 用于存储池id
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol'; // 用于存储池键
+    // 用于存储交换后的delta
+    // 理解成加强版的address类型，附加了很多自定义的方法
+    //  FullMath 让你可以安全地计算 (a × b) / c，即使中间结果 a × b 超过 uint256 范围！
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol'; // 用于存储池管理器
+    // 用于存储流动性数量
+    // 用于存储池id
+    // 用于存储池键
 import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol'; // 提供了一系列的安全转换方法，能防止溢出
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol'; // 用于存储tick数学
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta, toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {LiquidityAmounts} from '@uniswap/v4-core/test/utils/LiquidityAmounts.sol'; // 用于存储tick数学
 
 // CurrencySettler 通过库函数为 Currency 类型添加了 settle() 和 take() 方法，用于与 PoolManager 进行代币结算！
 import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
@@ -40,7 +46,6 @@ import {console2} from 'forge-std/console2.sol';
  * @dev Based on: https://github.com/fico23/fundraise-hook
  */
 contract FairLaunch is AccessControl {
-
     using CurrencySettler for Currency;
     using PoolIdLibrary for PoolKey;
     using SafeCast for *; // *表示所有类型。另外SafeCast提供了一些防止溢出的转换方法
@@ -76,7 +81,7 @@ contract FairLaunch is AccessControl {
     }
 
     /// Maps a PoolId to a FairLaunchInfo struct 将PoolId映射到FairLaunchInfo结构体
-    mapping (PoolId _poolId => FairLaunchInfo _info) internal _fairLaunchInfo;
+    mapping(PoolId _poolId => FairLaunchInfo _info) internal _fairLaunchInfo;
 
     /// Our Uniswap V4 {PoolManager} contract address 我们的Uniswap V4 {PoolManager}合同地址
     IPoolManager public immutable poolManager;
@@ -86,7 +91,9 @@ contract FairLaunch is AccessControl {
      * 存储我们的原生代币。
      * @param _poolManager The Uniswap V4 {PoolManager} contract
      */
-    constructor (IPoolManager _poolManager) {
+    constructor(
+        IPoolManager _poolManager
+    ) {
         poolManager = _poolManager;
 
         // Set our caller to have the default admin of protocol roles
@@ -102,7 +109,9 @@ contract FairLaunch is AccessControl {
      *
      * @return If the {PoolKey} is within the fair launch window
      */
-    function inFairLaunchWindow(PoolId _poolId) public view returns (bool) {
+    function inFairLaunchWindow(
+        PoolId _poolId
+    ) public view returns (bool) {
         FairLaunchInfo memory info = _fairLaunchInfo[_poolId];
         return block.timestamp >= info.startsAt && block.timestamp < info.endsAt;
     }
@@ -114,7 +123,9 @@ contract FairLaunch is AccessControl {
      *
      * @return The FairLaunchInfo for the pool
      */
-    function fairLaunchInfo(PoolId _poolId) public view returns (FairLaunchInfo memory) {
+    function fairLaunchInfo(
+        PoolId _poolId
+    ) public view returns (FairLaunchInfo memory) {
         return _fairLaunchInfo[_poolId];
     }
 
@@ -131,9 +142,7 @@ contract FairLaunch is AccessControl {
         uint _flaunchesAt, // 启动时间戳
         uint _initialTokenFairLaunch, // 用于公平启动的代币数量
         uint _fairLaunchDuration // 公平启动持续时间
-    ) public virtual onlyPositionManager returns (
-        FairLaunchInfo memory
-    ) {
+    ) public virtual onlyPositionManager returns (FairLaunchInfo memory) {
         // If we have no initial tokens, then we need to overwrite our fair launch duration to zero
         // 如果没有初始代币，那么我们需要将公平启动持续时间重写为零
         if (_initialTokenFairLaunch == 0) {
@@ -171,16 +180,15 @@ contract FairLaunch is AccessControl {
      * 2、剩余tokne。燃烧掉fairlaunch期间未售出的。然后剩下的部分，添加到一个宽区间，敞口到meme价格的正无穷方向。
      * 这个位置由未分配给公平启动的代币组成。公平启动未售出的代币将被销毁。
      * @param _poolKey The PoolKey we are closing the FairLaunch position of 我们关闭公平启动位置的池键
-     * @param _tokenFees The amount of token fees that need to remain in the {PositionManager} 需要保留在{PositionManager}中的代币手续费数量
+     * @param _tokenFees The amount of token fees that need to remain in the {PositionManager}
+     * 需要保留在{PositionManager}中的代币手续费数量
      * @param _nativeIsZero If our native token is `currency0` 如果我们的原生代币是`currency0`
      */
     function closePosition(
         PoolKey memory _poolKey,
         uint _tokenFees, // 需要保留在{PositionManager}中的代币手续费数量
         bool _nativeIsZero // 如果我们的原生代币是`currency0`
-    ) public onlyPositionManager returns (
-        FairLaunchInfo memory
-    ) {
+    ) public onlyPositionManager returns (FairLaunchInfo memory) {
         // Reference the pool's FairLaunchInfo, ready to store updated values
         // 引用池的FairLaunchInfo，准备存储更新值
         FairLaunchInfo storage info = _fairLaunchInfo[_poolKey.toId()];
@@ -189,8 +197,9 @@ contract FairLaunch is AccessControl {
         int24 tickUpper;
 
         // uni 内部，使用p = y/x, 并且token0 在x轴，因为token0，token1的排序是根据地址大小排的。所有eth就有可能排在0，或者1.
-        if (_nativeIsZero) { // eth 排在0的情况
-            // ETH position  ETH位置 
+        if (_nativeIsZero) {
+            // eth 排在0的情况
+            // ETH position  ETH位置
             tickLower = (info.initialTick + 1).validTick(false);
             tickUpper = tickLower + TickFinder.TICK_SPACING;
             _createImmutablePosition(_poolKey, tickLower, tickUpper, info.revenue, true);
@@ -199,8 +208,15 @@ contract FairLaunch is AccessControl {
             // 代币位置（未售出的公平启动供应在PositionManager中被销毁）
             tickLower = TickFinder.MIN_TICK;
             tickUpper = (info.initialTick - 1).validTick(true);
-            _createImmutablePosition(_poolKey, tickLower, tickUpper, _poolKey.currency1.balanceOf(msg.sender) - _tokenFees - info.supply, false);
-        } else { // eth 排在1的情况，eth在纵轴，p=e/x  表示单个x的价格（用eth表示），所以这样就有了一套tick，对于这样的tick，使用下面的方法
+            _createImmutablePosition(
+                _poolKey,
+                tickLower,
+                tickUpper,
+                _poolKey.currency1.balanceOf(msg.sender) - _tokenFees - info.supply,
+                false
+            );
+        } else {
+            // eth 排在1的情况，eth在纵轴，p=e/x  表示单个x的价格（用eth表示），所以这样就有了一套tick，对于这样的tick，使用下面的方法
             // ETH position  ETH位置
             tickUpper = (info.initialTick - 1).validTick(true);
             tickLower = tickUpper - TickFinder.TICK_SPACING;
@@ -209,7 +225,13 @@ contract FairLaunch is AccessControl {
             // memecoin position (unsold fair launch supply gets burned in PositionManager)
             tickLower = (info.initialTick + 1).validTick(false);
             tickUpper = TickFinder.MAX_TICK;
-            _createImmutablePosition(_poolKey, tickLower, tickUpper, _poolKey.currency0.balanceOf(msg.sender) - _tokenFees - info.supply, true);
+            _createImmutablePosition(
+                _poolKey,
+                tickLower,
+                tickUpper,
+                _poolKey.currency0.balanceOf(msg.sender) - _tokenFees - info.supply,
+                true
+            );
         }
 
         // Mark our position as closed
@@ -249,12 +271,11 @@ contract FairLaunch is AccessControl {
         PoolKey memory _poolKey,
         int _amountSpecified,
         bool _nativeIsZero
-    ) public onlyPositionManager returns (
-        BeforeSwapDelta beforeSwapDelta_,
-        BalanceDelta balanceDelta_,
-        FairLaunchInfo memory fairLaunchInfo_
-    ) {
-        
+    )
+        public
+        onlyPositionManager
+        returns (BeforeSwapDelta beforeSwapDelta_, BalanceDelta balanceDelta_, FairLaunchInfo memory fairLaunchInfo_)
+    {
         PoolId poolId = _poolKey.toId();
         FairLaunchInfo storage info = _fairLaunchInfo[poolId];
 
@@ -272,7 +293,7 @@ contract FairLaunch is AccessControl {
         // If we have a negative amount specified, then we have an ETH amount passed in and want
         // 如果指定了负数金额，那么我们有一个ETH金额传入，想要购买尽可能多的代币。
         // to buy as many tokens as we can for that price.
-        
+
         if (_amountSpecified < 0) {
             ethIn = uint(-_amountSpecified);
             tokensOut = _getQuoteAtTick(
@@ -310,14 +331,13 @@ contract FairLaunch is AccessControl {
         }
         // ---------------------------计算eth和token的数量---------------------------
 
-
         // BeforeSwapDelta 高128表示精确的那代币的增量，低128表示不精确的那代币的增量  表示的是那个是精确，那个是非精确的关系
         // https://docs.uniswap.org/contracts/v4/reference/core/types/beforeswapdelta-guide
         // Get our BeforeSwapDelta response ready 准备好我们的BeforeSwapDelta响应
         beforeSwapDelta_ = (_amountSpecified < 0)
             ? toBeforeSwapDelta(ethIn.toInt128(), -tokensOut.toInt128())
             : toBeforeSwapDelta(-tokensOut.toInt128(), ethIn.toInt128());
-        
+
         // BalanceDelta定义高128为代币0的数量，低128为代币1的数量   表示的token0/token1的关系
         // Define our BalanceDelta 定义我们的BalanceDelta
         balanceDelta_ = toBalanceDelta(
@@ -348,7 +368,7 @@ contract FairLaunch is AccessControl {
 
     /**
      * Creates an immutable, single-sided position when the FairLaunch window is closed.
-     * 在公平启动窗口关闭时创建一个不可变的单边位置。 
+     * 在公平启动窗口关闭时创建一个不可变的单边位置。
      * @param _poolKey The PoolKey to create a position against 创建位置的池键
      * @param _tickLower The lower tick of the position 位置的下界tick
      * @param _tickUpper The upper tick of the position 位置的上界tick
@@ -365,15 +385,17 @@ contract FairLaunch is AccessControl {
         // Calculate the liquidity delta based on the tick range and token amount
         // 根据tick范围和代币数量计算流动性增量
         // 计算方法有一套算法，还没有研究
-        uint128 liquidityDelta = _tokenIsZero ? LiquidityAmounts.getLiquidityForAmount0({
-            sqrtPriceAX96: TickMath.getSqrtPriceAtTick(_tickLower),// sqrtPriceAX96 表示变量名
-            sqrtPriceBX96: TickMath.getSqrtPriceAtTick(_tickUpper),
-            amount0: _tokens
-        }) : LiquidityAmounts.getLiquidityForAmount1({
-            sqrtPriceAX96: TickMath.getSqrtPriceAtTick(_tickLower),
-            sqrtPriceBX96: TickMath.getSqrtPriceAtTick(_tickUpper),
-            amount1: _tokens
-        });
+        uint128 liquidityDelta = _tokenIsZero
+            ? LiquidityAmounts.getLiquidityForAmount0({
+                sqrtPriceAX96: TickMath.getSqrtPriceAtTick(_tickLower), // sqrtPriceAX96 表示变量名
+                sqrtPriceBX96: TickMath.getSqrtPriceAtTick(_tickUpper),
+                amount0: _tokens
+            })
+            : LiquidityAmounts.getLiquidityForAmount1({
+                sqrtPriceAX96: TickMath.getSqrtPriceAtTick(_tickLower),
+                sqrtPriceBX96: TickMath.getSqrtPriceAtTick(_tickUpper),
+                amount1: _tokens
+            });
 
         // 对于跨越价格的区间，双边流动性的计算
         // uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmounts({
@@ -386,7 +408,9 @@ contract FairLaunch is AccessControl {
 
         // If we have no liquidity, then exit before creating the position which would revert
         // 如果没有流动性，则退出，避免创建位置时会失败
-        if (liquidityDelta == 0) return;
+        if (liquidityDelta == 0) {
+            return;
+        }
 
         // Create our single-sided position 创建我们的单边位置
         // 其实，创建流动性的语句，始终都是这一个，
@@ -403,7 +427,7 @@ contract FairLaunch is AccessControl {
             hookData: ''
         });
 
-        // Settle the tokens that are required to fill the position 
+        // Settle the tokens that are required to fill the position
         // 结算需要填充位置的代币
         if (delta.amount0() < 0) {
             _poolKey.currency0.settle(poolManager, msg.sender, uint(-int(delta.amount0())), false);
@@ -431,9 +455,7 @@ contract FairLaunch is AccessControl {
         uint _baseAmount,
         address _baseToken,
         address _quoteToken
-    ) internal pure returns (
-        uint quoteAmount_
-    ) {
+    ) internal pure returns (uint quoteAmount_) {
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(_tick);
 
         // Calculate `quoteAmount` with better precision if it doesn't overflow when multiplied
@@ -455,9 +477,10 @@ contract FairLaunch is AccessControl {
      * Ensures that only a {PositionManager} can call the function.
      * 确保只有{PositionManager}可以调用函数。
      */
-    modifier onlyPositionManager {
-        if (!hasRole(ProtocolRoles.POSITION_MANAGER, msg.sender)) revert NotPositionManager();
+    modifier onlyPositionManager() {
+        if (!hasRole(ProtocolRoles.POSITION_MANAGER, msg.sender)) {
+            revert NotPositionManager();
+        }
         _;
     }
-
 }

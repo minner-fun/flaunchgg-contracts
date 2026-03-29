@@ -3,9 +3,7 @@ pragma solidity ^0.8.26;
 
 import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
 
-
 interface IDopplerAirlock {
-
     struct AssetData {
         address numeraire;
         address timelock;
@@ -14,21 +12,20 @@ interface IDopplerAirlock {
         address poolInitializer;
         address pool;
         address migrationPool;
-        uint256 numTokensToSell;
-        uint256 totalSupply;
+        uint numTokensToSell;
+        uint totalSupply;
         address integrator;
     }
 
-    function getAssetData(address _asset) external view returns (AssetData memory);
-
+    function getAssetData(
+        address _asset
+    ) external view returns (AssetData memory);
 }
-
 
 /**
  * Confirms that a memecoin has been deployed on Doppler.
  */
 contract DopplerVerifier is IImportVerifier {
-    
     /// The Clanker contract
     IDopplerAirlock public immutable doppler;
 
@@ -37,7 +34,9 @@ contract DopplerVerifier is IImportVerifier {
      *
      * @param _doppler The address of the Doppler Airlock contract
      */
-    constructor (address _doppler) {
+    constructor(
+        address _doppler
+    ) {
         doppler = IDopplerAirlock(_doppler);
     }
 
@@ -59,5 +58,4 @@ contract DopplerVerifier is IImportVerifier {
         // Confirm that the sender is registered integrator of the token
         return asset.integrator == _sender;
     }
-
 }

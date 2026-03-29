@@ -3,12 +3,10 @@ pragma solidity ^0.8.26;
 
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
 
-import {TreasuryManagerMock} from 'test/mocks/TreasuryManagerMock.sol';
 import {FlaunchTest} from 'test/FlaunchTest.sol';
-
+import {TreasuryManagerMock} from 'test/mocks/TreasuryManagerMock.sol';
 
 contract TreasuryManagerFactoryTest is FlaunchTest {
-
     /// Define some EOA addresses to test with
     address nonOwner = address(0x456);
 
@@ -20,7 +18,8 @@ contract TreasuryManagerFactoryTest is FlaunchTest {
         _deployPlatform();
 
         // Deploy a mocked manager implementation
-        managerImplementation = address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
+        managerImplementation =
+            address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
 
         // Create some test data that we can pass
         data = abi.encode('Test initialization');

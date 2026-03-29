@@ -12,13 +12,11 @@ import {IFeeEscrow} from '@flaunch-interfaces/IFeeEscrow.sol';
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
 
-
 /**
  * Allows the contract owner to manage approved {ITreasuryAction} contracts.
  * 允许合约所有者管理批准的{ITreasuryAction}合约。
  */
 contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownable {
-
     error UnknownManagerImplemention();
 
     event ManagerImplementationApproved(address indexed _managerImplementation);
@@ -28,17 +26,17 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
     IFeeEscrow public immutable feeEscrow;
 
     /// Mapping to store approved action contract addresses
-    mapping (address _managerImplementation => bool _approved) public approvedManagerImplementation;
+    mapping(address _managerImplementation => bool _approved) public approvedManagerImplementation;
 
     /// Mapping of deployments to their implementations
-    mapping (address _manager => address _managerImplementation) public managerImplementation;
+    mapping(address _manager => address _managerImplementation) public managerImplementation;
 
     /**
      * Sets the contract owner.
      * 设置合约所有者。
      * @dev This contract should be created in the {PositionManager} constructor call.
      */
-    constructor (address _protocolOwner, address _feeEscrow) {
+    constructor(address _protocolOwner, address _feeEscrow) {
         feeEscrow = IFeeEscrow(_feeEscrow);
 
         _initializeOwner(_protocolOwner);
@@ -54,7 +52,9 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
      *
      * @return manager_ The freshly deployed {TreasuryManager} contract address
      */
-    function deployManager(address _managerImplementation) public returns (address payable manager_) {
+    function deployManager(
+        address _managerImplementation
+    ) public returns (address payable manager_) {
         // Ensure that the implementation is approved 确保实现被批准
         if (!approvedManagerImplementation[_managerImplementation]) {
             revert UnknownManagerImplemention();
@@ -83,9 +83,7 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
         address _managerImplementation,
         address _owner,
         bytes calldata _data
-    ) public returns (
-        address payable manager_
-    ) {
+    ) public returns (address payable manager_) {
         // Deploy our manager implementation 部署我们的管理器实现
         manager_ = deployManager(_managerImplementation);
 
@@ -100,7 +98,9 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
      * 如果实现已经被批准，则不会 revert
      * @param _managerImplementation The implementation to approve
      */
-    function approveManager(address _managerImplementation) public onlyOwner {
+    function approveManager(
+        address _managerImplementation
+    ) public onlyOwner {
         approvedManagerImplementation[_managerImplementation] = true;
         emit ManagerImplementationApproved(_managerImplementation);
     }
@@ -112,7 +112,9 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
      *
      * @param _managerImplementation The implementation to unapprove
      */
-    function unapproveManager(address _managerImplementation) public onlyOwner {
+    function unapproveManager(
+        address _managerImplementation
+    ) public onlyOwner {
         if (!approvedManagerImplementation[_managerImplementation]) {
             revert UnknownManagerImplemention();
         }
@@ -129,5 +131,4 @@ contract TreasuryManagerFactory is AccessControl, ITreasuryManagerFactory, Ownab
     function _guardInitializeOwner() internal pure override returns (bool) {
         return true;
     }
-
 }

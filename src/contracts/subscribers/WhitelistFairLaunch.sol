@@ -3,14 +3,14 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+
 import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
-import {BaseSubscriber} from '@flaunch/subscribers/Base.sol';
 import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
-
+import {BaseSubscriber} from '@flaunch/subscribers/Base.sol';
 
 /**
  * This allows a Fair Launch to be whitelisted so that only specific addresses can
@@ -21,7 +21,6 @@ import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
  * it does not pass.
  */
 contract WhitelistFairLaunch is BaseSubscriber, Ownable {
-
     error CallerNotWhitelisted();
     error CallerNotWhitelistZap();
     error WhitelistAlreadyExists();
@@ -53,10 +52,10 @@ contract WhitelistFairLaunch is BaseSubscriber, Ownable {
     address public whitelistPoolSwap;
 
     /// Stores our whitelist zaps
-    mapping (address _whitelistZap => bool _approved) public whitelistZaps;
+    mapping(address _whitelistZap => bool _approved) public whitelistZaps;
 
     /// Stores our whitelist claim lists
-    mapping (PoolId _poolId => WhitelistMerkle _merkle) public whitelistMerkles;
+    mapping(PoolId _poolId => WhitelistMerkle _merkle) public whitelistMerkles;
 
     /**
      * Sets our {Notifier} to parent contract to lock down calls, as well as assigning the
@@ -65,7 +64,7 @@ contract WhitelistFairLaunch is BaseSubscriber, Ownable {
      * @param _notifier The {Notifier} contract
      * @param _fairLaunch The {FairLaunch} contract address
      */
-    constructor (address _notifier, address _fairLaunch) BaseSubscriber(_notifier) {
+    constructor(address _notifier, address _fairLaunch) BaseSubscriber(_notifier) {
         _initializeOwner(msg.sender);
 
         fairLaunch = FairLaunch(_fairLaunch);
@@ -78,7 +77,9 @@ contract WhitelistFairLaunch is BaseSubscriber, Ownable {
      *
      * @dev This must return `true` to be subscribed.
      */
-    function subscribe(bytes memory /* _data */) public view override onlyNotifier returns (bool) {
+    function subscribe(
+        bytes memory /* _data */
+    ) public view override onlyNotifier returns (bool) {
         return whitelistPoolSwap != address(0);
     }
 
@@ -127,10 +128,7 @@ contract WhitelistFairLaunch is BaseSubscriber, Ownable {
         }
 
         // Decode our parameters to get the sender of the swap transaction
-        (address sender,,) = abi.decode(
-            _data,
-            (address, IPoolManager.SwapParams, BalanceDelta)
-        );
+        (address sender,,) = abi.decode(_data, (address, IPoolManager.SwapParams, BalanceDelta));
 
         // Ensure that the sender is our whitelist swap contract
         if (sender != whitelistPoolSwap) {
@@ -172,7 +170,9 @@ contract WhitelistFairLaunch is BaseSubscriber, Ownable {
      *
      * @param _whitelistPoolSwap The new {WhitelistPoolSwap} address
      */
-    function setWhitelistPoolSwap(address _whitelistPoolSwap) public onlyOwner {
+    function setWhitelistPoolSwap(
+        address _whitelistPoolSwap
+    ) public onlyOwner {
         whitelistPoolSwap = _whitelistPoolSwap;
         emit WhitelistPoolSwapUpdated(_whitelistPoolSwap);
     }
@@ -189,5 +189,4 @@ contract WhitelistFairLaunch is BaseSubscriber, Ownable {
         whitelistZaps[_whitelistZap] = _approved;
         emit WhitelistZapUpdated(_whitelistZap, _approved);
     }
-
 }

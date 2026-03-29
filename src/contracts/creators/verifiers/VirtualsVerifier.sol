@@ -9,7 +9,6 @@ import {ProxyCheck} from '@flaunch/libraries/ProxyCheck.sol';
 
 import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
 
-
 /**
  * Interface for the Virtuals AgentToken contract.
  */
@@ -17,14 +16,12 @@ interface IAgentToken {
     function owner() external view returns (address owner_);
 }
 
-
 /**
  * Confirms that a memecoin is a Virtuals AgentToken. For an AgentToken to be valid, it must have been
  * successfully launched and deployed on the Virtuals platform, and the sender must be the owner of the
  * AgentToken on the contract.
  */
 contract VirtualsVerifier is IImportVerifier, Ownable {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error ZeroAddress();
@@ -37,7 +34,7 @@ contract VirtualsVerifier is IImportVerifier, Ownable {
     /**
      * Registers the contract owner.
      */
-    constructor () {
+    constructor() {
         // Set the owner to the deployer
         _initializeOwner(msg.sender);
     }
@@ -81,5 +78,4 @@ contract VirtualsVerifier is IImportVerifier, Ownable {
 
         emit AgentTokenImplementationSet(_agentTokenImplementation, _valid);
     }
-
 }
